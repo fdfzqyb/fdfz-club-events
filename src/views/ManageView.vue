@@ -70,13 +70,26 @@ async function openRoster(ev) {
   const { data, error } = await supabase.rpc('club_roster', { p_event: ev.id })
   if (error) return toast(errorText(error))
   roster.value = { ev, rows: data }
+  rosterPicked.value = new Set()
   await nextTick()
   document.getElementById('roster')?.scrollIntoView({ behavior: 'smooth' })
 }
 const STATUS_LABEL = { going: '已報名', waitlist: '候補' }
-function exportRoster() {
-  const { ev, rows } = roster.value
-  downloadCsv(`${club.value.name}-${ev.title}-${t('報名名單')}.csv`,
+// 匯出全部，或只匯出勾選的幾個人（rosterPicked 存的是名單裡的位置）
+const rosterPicked = ref(new Set())
+const rosterAll = computed(() => roster.value?.rows.length > 0 && rosterPicked.value.size === roster.value.rows.length)
+function pickRow(i) {
+  const next = new Set(rosterPicked.value)
+  next.has(i) ? next.delete(i) : next.add(i)
+  rosterPicked.value = next
+}
+function pickAllRows() {
+  rosterPicked.value = rosterAll.value ? new Set() : new Set(roster.value.rows.map((_, i) => i))
+}
+function exportRoster(onlyPicked) {
+  const { ev } = roster.value
+  const rows = onlyPicked ? roster.value.rows.filter((_, i) => rosterPicked.value.has(i)) : roster.value.rows
+  downloadCsv(`${club.value.name}-${ev.title}-${t('報名名單')}${onlyPicked ? '-' + t('選取的 {n} 人', { n: rows.length }) : ''}.csv`,
     [t('姓名'), t('學號'), t('班級'), t('狀態'), t('報名時間'), ...ev.questions],
     rows.map((r) => [r.full_name, r.student_id, r.class_code, t(STATUS_LABEL[r.status]), fullStamp(r.queued_at), ...ev.questions.map((_, i) => r.answers[i] ?? '')]))
 }
@@ -166,20 +179,24 @@ async function saveClub() {
 
           <div v-if="roster" id="roster" class="card">
             <div class="row"><h3>{{ t('報名名單：{title}', { title: roster.ev.title }) }}</h3>
-              <button class="btn plain small" type="button" :disabled="!roster.rows.length" @click="exportRoster"><Icon name="down" />{{ t('匯出 CSV') }}</button></div>
+              <span class="hstack">
+                <button class="btn plain small" type="button" :disabled="!rosterPicked.size" @click="exportRoster(true)"><Icon name="down" />{{ t('匯出勾選的（{n} 人）', { n: rosterPicked.size }) }}</button>
+                <button class="btn plain small" type="button" :disabled="!roster.rows.length" @click="exportRoster(false)"><Icon name="down" />{{ t('匯出全部') }}</button>
+              </span></div>
             <p class="muted small">
               {{ t('{n} 人報名', { n: roster.rows.filter((r) => r.status === 'going').length }) }}{{ t('，') }}{{ roster.ev.capacity ? t('上限 {cap} 人', { cap: roster.ev.capacity }) : t('不限人數') }}{{ t('。名單只有{club}幹部看得到。', { club: club.name }) }}
             </p>
             <div class="tbl-wrap">
               <table class="tbl">
-                <thead><tr><th>{{ t('姓名') }}</th><th>{{ t('班級') }}</th><th>{{ t('報名時間') }}</th><th v-for="(q, i) in roster.ev.questions" :key="i">{{ q }}</th></tr></thead>
+                <thead><tr><th style="width:28px"><input type="checkbox" :checked="rosterAll" :aria-label="t('全選')" :disabled="!roster.rows.length" @change="pickAllRows" /></th><th>{{ t('姓名') }}</th><th>{{ t('班級') }}</th><th>{{ t('報名時間') }}</th><th v-for="(q, i) in roster.ev.questions" :key="i">{{ q }}</th></tr></thead>
                 <tbody>
                   <tr v-for="(r, i) in roster.rows" :key="i">
+                    <td><input type="checkbox" :checked="rosterPicked.has(i)" :aria-label="t('勾選 {name}', { name: r.full_name })" @change="pickRow(i)" /></td>
                     <td>{{ r.full_name }}<span v-if="r.status === 'waitlist'" class="status st-wait" style="margin-left:6px">{{ t('候補') }}</span></td>
                     <td>{{ r.class_code }}</td><td>{{ shortStamp(r.queued_at) }}</td>
                     <td v-for="(q, j) in roster.ev.questions" :key="j">{{ r.answers[j] }}</td>
                   </tr>
-                  <tr v-if="!roster.rows.length"><td :colspan="3 + roster.ev.questions.length" class="muted">{{ t('還沒有人報名') }}</td></tr>
+                  <tr v-if="!roster.rows.length"><td :colspan="4 + roster.ev.questions.length" class="muted">{{ t('還沒有人報名') }}</td></tr>
                 </tbody>
               </table>
             </div>

@@ -82,12 +82,23 @@ async function confirmReject() {
   await loadApps()
 }
 
-// 匯出目前篩選的申請，每位申請人一行
+// 匯出 CSV，每位申請人一行。三種：單份（卡片上的「匯出這份」）、勾選的幾份、目前篩選的全部
 const FILTER_LABEL = { pending: '待審批', approved: '已通過', rejected: '已退回', all: '全部' }
-function exportApps() {
+const picked = ref(new Set()) // 勾選的申請 id
+const pickedShown = computed(() => shown.value.filter((a) => picked.value.has(a.id)))
+const allPicked = computed(() => shown.value.length > 0 && pickedShown.value.length === shown.value.length)
+function togglePick(a) {
+  const next = new Set(picked.value)
+  next.has(a.id) ? next.delete(a.id) : next.add(a.id)
+  picked.value = next
+}
+function toggleAll() {
+  picked.value = allPicked.value ? new Set() : new Set(shown.value.map((a) => a.id))
+}
+function exportApps(list, label) {
   const header = ['送出時間', '狀態', '社團名稱', '新社團', '申請崗位', '姓名', '性別', '班級', '學號', '微信號', '聯繫電話',
     '政治面貌', '成績等第', '社團指導老師', '職務', '社團指導老師意見', '班主任意見', '是否受過校紀處分', '審批人', '審批時間', '退回理由'].map((h) => t(h))
-  const rows = shown.value.map((a) => [
+  const rows = list.map((a) => [
     fullStamp(a.created_at), t(STATUS[a.status][0]), appClub(a), isNew(a) ? t('是') : t('否'), t(ROLE_LABEL[a.role]),
     a.full_name, a.gender ? t(GENDER_LABEL[a.gender]) : '', a.class_code, a.student_id, a.wechat, a.phone,
     a.political_status, GRADE_LABEL[a.grade_rank] ?? '', a.advisor, a.duties,
@@ -95,7 +106,7 @@ function exportApps() {
     a.reviewer_name ?? '', fullStamp(a.reviewed_at), a.reject_reason ?? '',
   ])
   const d = new Date()
-  downloadCsv(`${t('社團幹部申請')}-${t(FILTER_LABEL[filter.value])}-${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}.csv`, header, rows)
+  downloadCsv(`${t('社團幹部申請')}-${label}-${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}.csv`, header, rows)
 }
 
 // 社團
@@ -170,14 +181,21 @@ async function removeStaff(s) {
           <div class="chips">
             <button v-for="(label, k) in FILTER_LABEL" :key="k" type="button" class="chip" :aria-pressed="filter === k" @click="filter = k">{{ t(label) }}</button>
           </div>
-          <button class="btn plain small" type="button" :disabled="!shown.length" @click="exportApps"><Icon name="down" />{{ t('匯出 CSV（{n} 份）', { n: shown.length }) }}</button>
+          <div class="hstack">
+            <button class="btn plain small" type="button" :disabled="!pickedShown.length" @click="exportApps(pickedShown, t('選取的 {n} 份', { n: pickedShown.length }))"><Icon name="down" />{{ t('匯出勾選的（{n} 份）', { n: pickedShown.length }) }}</button>
+            <button class="btn plain small" type="button" :disabled="!shown.length" @click="exportApps(shown, t(FILTER_LABEL[filter]))"><Icon name="down" />{{ t('匯出全部（{n} 份）', { n: shown.length }) }}</button>
+          </div>
         </div>
+        <label v-if="shown.length" class="check small" style="align-self:flex-start"><input type="checkbox" :checked="allPicked" @change="toggleAll" />{{ t('全選這一頁的 {n} 份', { n: shown.length }) }}</label>
         <p class="muted tiny">{{ t('兩項老師意見是申請人自己勾的，系統無法證實，需要時請線下向老師核實。') }}</p>
         <p v-if="!shown.length" class="empty">{{ filter === 'pending' ? t('沒有待審批的申請') : t('沒有申請') }}</p>
         <div class="ev-grid" style="align-items:start">
           <div v-for="a in shown" :key="a.id" class="card app-card" :class="{ new: isNew(a) && a.status === 'pending' }" :style="a.status !== 'pending' ? 'opacity:.8' : ''">
             <div class="row">
-              <b>{{ isNew(a) ? t('新社團：') : '' }}{{ appClub(a) }} · {{ t(ROLE_LABEL[a.role]) }}</b>
+              <label class="check" style="flex:1;min-width:0">
+                <input type="checkbox" :checked="picked.has(a.id)" :aria-label="t('勾選這份申請')" @change="togglePick(a)" />
+                <b>{{ isNew(a) ? t('新社團：') : '' }}{{ appClub(a) }} · {{ t(ROLE_LABEL[a.role]) }}</b>
+              </label>
               <span class="status" :class="STATUS[a.status][1]">{{ t(STATUS[a.status][0]) }}</span>
             </div>
             <dl class="idbox">
@@ -198,6 +216,7 @@ async function removeStaff(s) {
               </template>
               <dt>{{ t('送出') }}</dt><dd>{{ fullStamp(a.created_at) }}</dd>
             </dl>
+            <button class="btn plain small" type="button" style="align-self:flex-start" @click="exportApps([a], a.full_name)"><Icon name="down" />{{ t('匯出這份') }}</button>
             <p v-if="a.purged_at" class="muted tiny">{{ t('敏感欄位已於 {d} 清除。', { d: md(a.purged_at) }) }}</p>
 
             <template v-if="a.status === 'pending'">

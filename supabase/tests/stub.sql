@@ -14,5 +14,3 @@ alter default privileges in schema public grant all on sequences to anon, authen
 alter default privileges in schema public grant execute on functions to anon, authenticated;
 create publication supabase_realtime;
 create table storage.buckets (id text primary key, name text, public boolean, file_size_limit bigint, allowed_mime_types text[]);
--- 模擬 pg_cron：只記下排程，不真的執行
-create schema cron; create function cron.schedule(name text, sched text, cmd text) returns bigint language sql as $$ select 1::bigint $$;

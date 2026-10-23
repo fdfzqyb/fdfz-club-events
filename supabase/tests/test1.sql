@@ -49,14 +49,10 @@ reset role; set role authenticated;
 select pg_temp.who('20240103'), pg_temp.fails($$select club_save_event((select id from club_clubs), null, '{"title":"x","starts_at":"2030-01-01T19:00+08","location":"操場"}')$$);
 select pg_temp.who('20240104'); insert into club_follows (user_id, club_id) select auth.uid(), id from club_clubs;
 select pg_temp.who('20240105'); insert into club_follows (user_id, club_id) select auth.uid(), id from club_clubs;
-insert into club_prefs (user_id, weekly_digest) values (auth.uid(), true);
 select pg_temp.who('20240102');
 select pg_temp.fails($$select club_save_event((select id from club_clubs), null, '{"title":"觀星","starts_at":"2030-01-01T19:00+08"}')$$);
 select club_save_event((select id from club_clubs), null, '{"title":"觀星","starts_at":"2030-01-01T19:00+08","ends_at":"2030-01-01T21:00+08","location":"操場","capacity":2,"questions":["帶望遠鏡嗎？",""]}') > 0;
 select title, questions from club_events;
-reset role;
-select p.student_id, o.kind from club_email_outbox o join profiles p on p.id=o.user_id where o.kind in ('new_event','digest_item') order by 1;
-set role authenticated;
 
 \echo '--- 報名：答案要對上題數；第 3 人進候補'
 select pg_temp.who('20240106'), pg_temp.fails($$select club_register((select id from club_events), '["會"]')$$);
@@ -79,44 +75,20 @@ select pg_temp.fails($$select club_save_event((select id from club_clubs), (sele
 select pg_temp.who('20240103'), club_unregister((select id from club_events));
 select pg_temp.who('20240105');
 select my_status from club_event_feed;
-reset role;
-select p.student_id, o.kind from club_email_outbox o join profiles p on p.id=o.user_id where o.kind='promoted';
-set role authenticated;
 
-\echo '--- 改地點：寄給已報名和候補的人；記下原本地點'
+\echo '--- 改地點：記下原本地點'
 select pg_temp.who('20240103'), club_register((select id from club_events), '["會"]');
 select pg_temp.who('20240102'), club_save_event((select id from club_clubs), (select id from club_events), '{"title":"觀星","starts_at":"2030-01-01T19:00+08","ends_at":"2030-01-01T21:00+08","location":"看台","capacity":2,"questions":["帶望遠鏡嗎？"]}') > 0;
 select prev_location, changed_at is not null from club_events;
-reset role;
-select p.student_id, o.payload->>'old_location' from club_email_outbox o join profiles p on p.id=o.user_id where o.kind='event_changed' order by 1;
-set role authenticated;
 
 \echo '--- 上限調高：候補自動遞補'
 select club_save_event((select id from club_clubs), (select id from club_events), '{"title":"觀星","starts_at":"2030-01-01T19:00+08","ends_at":"2030-01-01T21:00+08","location":"看台","capacity":3,"questions":["帶望遠鏡嗎？"]}') > 0;
 select going_count, waitlist_count from club_event_feed;
 
-\echo '--- 每週摘要、提醒'
-reset role;
-select club_build_digests();
-select p.student_id, jsonb_array_length(o.payload->'events') from club_email_outbox o join profiles p on p.id=o.user_id where o.kind='digest';
-update club_events set starts_at = date_trunc('day', now() at time zone 'Asia/Shanghai') at time zone 'Asia/Shanghai' + interval '1 day 19 hours', ends_at = null;
-select club_queue_reminders(), club_queue_reminders();
-select count(*), count(distinct kind) from club_outbox_claim(500);
-select count(*) from club_email_outbox where sent_at is null and kind <> 'digest_item';
-set role authenticated;
-
-\echo '--- 前端讀不到寄信佇列；不能叫定時任務'
-select pg_temp.who('20240102'), (select count(*) from club_email_outbox);
-select pg_temp.fails($$select club_build_digests()$$);
-select pg_temp.fails($$select * from club_outbox_claim(1)$$);
-
-\echo '--- 取消活動：要理由，寄給報名的人'
+\echo '--- 取消活動：要理由，之後不能報名'
 select pg_temp.fails($$select club_cancel_event((select id from club_events), '')$$);
 select club_cancel_event((select id from club_events), '下雨');
 select pg_temp.who('20240104'), pg_temp.fails($$select club_register((select id from club_events), '["會"]')$$);
-reset role;
-select count(*) from club_email_outbox where kind='event_cancelled';
-set role authenticated;
 
 \echo '--- 退回申請要理由；CSV 用的欄位管理部讀得到'
 select pg_temp.who('20240103');

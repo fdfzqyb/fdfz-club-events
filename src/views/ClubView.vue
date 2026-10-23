@@ -103,7 +103,7 @@ const back = () => (window.history.state?.back ? router.back() : router.push('/c
           </div>
           <div class="vstack">
             <h2 class="sec-t">{{ t('即將舉辦') }}</h2>
-            <p v-if="!upcoming.length" class="muted small">{{ t('目前沒有即將舉辦的活動。關注社團，發新活動時會寄信給你。') }}</p>
+            <p v-if="!upcoming.length" class="muted small">{{ t('目前沒有即將舉辦的活動。關注社團後，可以在活動牆的「我關注的」看到它的新活動。') }}</p>
             <router-link v-for="e in upcoming" :key="e.id" class="card ev" :to="`/e/${e.id}`" style="flex-direction:row;align-items:center;gap:14px">
               <div style="width:40%;flex:none"><Poster :ev="e" /></div>
               <div class="ev-body" style="padding:0;flex:1;min-width:0">

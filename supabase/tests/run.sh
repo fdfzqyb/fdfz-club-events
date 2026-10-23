@@ -5,7 +5,7 @@ set -e
 WALL=${1:?請給權益牆 supabase/schema.sql 的路徑}
 DIR=$(dirname "$0")
 dropdb --if-exists club_test && createdb club_test
-psql -q -v ON_ERROR_STOP=1 -d club_test -f "$DIR/stub.sql" -f "$WALL" -f "$DIR/../club_schema.sql" -f "$DIR/../club_mailer.sql" >/dev/null
+psql -q -v ON_ERROR_STOP=1 -d club_test -f "$DIR/stub.sql" -f "$WALL" -f "$DIR/../club_schema.sql" >/dev/null
 for t in "$DIR"/test*.sql; do
   echo "=== $t"
   psql -q -v ON_ERROR_STOP=1 -d club_test -f "$t"

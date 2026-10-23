@@ -63,7 +63,7 @@ async function submit() {
 
 <template>
   <form class="card" novalidate @submit.prevent="submit">
-    <p class="small">{{ t('社長和副社長可以替社團發活動、編輯社團介紹、看報名名單。送出後由社團管理部審核，結果會寄信通知你。') }}</p>
+    <p class="small">{{ t('社長和副社長可以替社團發活動、編輯社團介紹、看報名名單。送出後由社團管理部審核，結果會顯示在下面的「我的申請」。') }}</p>
     <div class="grid2">
       <div><span class="field-t">{{ t('姓名') }}</span><div class="readonly">{{ profile.full_name }}</div></div>
       <div><span class="field-t">{{ t('班級') }}</span><div class="readonly">{{ classCode }}</div></div>

@@ -108,7 +108,7 @@ async function confirmCancel() {
   const { error } = await supabase.rpc('club_cancel_event', { p_event: cancelling.value.id, p_reason: cancelReason.value.trim() })
   if (error) return (cancelError.value = errorText(error))
   cancelling.value = null
-  toast('活動已取消，已報名的人會收到通知信')
+  toast('活動已取消')
   await loadEvents()
 }
 
@@ -235,12 +235,12 @@ async function saveClub() {
     </div>
 
     <Modal v-if="cancelling" :open="!!cancelling" :title="t('取消「{title}」？', { title: cancelling.title })" @update:open="(v) => !v && (cancelling = null)">
-      <p class="small">{{ t('已報名和候補的 {n} 人會收到取消通知信。活動會留在社團頁，標示為已取消。', { n: cancelling.going + cancelling.waiting }) }}</p>
-      <label class="field"><span>{{ t('取消原因') }}<span class="req">*</span></span><input v-model="cancelReason" type="text" maxlength="200" /><small>{{ t('會寫進通知信。') }}</small></label>
+      <p class="small">{{ t('已報名和候補的 {n} 人會在活動頁和「我的」頁看到已取消和原因。活動會留在社團頁。', { n: cancelling.going + cancelling.waiting }) }}</p>
+      <label class="field"><span>{{ t('取消原因') }}<span class="req">*</span></span><input v-model="cancelReason" type="text" maxlength="200" /><small>{{ t('會顯示在活動頁。網站不會寄信，重要的變動請另外在群裡通知。') }}</small></label>
       <p v-if="cancelError" class="error">{{ t(cancelError) }}</p>
       <div class="actions" style="justify-content:flex-end">
         <button class="btn plain" type="button" @click="cancelling = null">{{ t('先不要') }}</button>
-        <button class="btn" type="button" @click="confirmCancel">{{ t('取消活動並通知') }}</button>
+        <button class="btn" type="button" @click="confirmCancel">{{ t('確定取消活動') }}</button>
       </div>
     </Modal>
   </main>

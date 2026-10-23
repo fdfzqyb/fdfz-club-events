@@ -28,7 +28,7 @@ async function toggle() {
   if (error) return toast(errorText(error))
   on.value = !on.value
   emit('change', on.value)
-  toast(on.value ? '已關注，這個社團發新活動會寄信給你' : '已取消關注')
+  toast(on.value ? '已關注，可以在活動牆的「我關注的」看到這個社團的活動' : '已取消關注')
 }
 </script>
 

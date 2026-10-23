@@ -14,23 +14,15 @@
    ```sql
    insert into club_staff (user_id) select id from profiles where student_id = '學號' and verify_status = 'approved';
    ```
-3. **寄信**（見下一節）：部署 `club-mailer`，再執行 [`supabase/club_mailer.sql`](supabase/club_mailer.sql)。
-4. **Cloudflare**：Workers & Pages → 建立 → 連接 GitHub，選這個倉庫。Build command `npm run build`，Deploy command `npx wrangler deploy`，Worker 名稱 `fdfz-club`（要和 [`wrangler.jsonc`](wrangler.jsonc) 一致）。部署完到 Worker → Settings → Domains & Routes → Add → Custom domain，填 `club.fdfz.click`。之後每次推到 `main` 都會自動重新部署。
-5. **Supabase → Authentication → URL Configuration → Redirect URLs** 加上 `https://club.fdfz.click/**`（Site URL 不要改）。
-6. 上線後，在帳號中心 fdfz-click-account 的 `src/constants.js` 的 `SITES` 加一行社團活動，「我的帳號」才會出現入口。
+3. **Cloudflare**：Workers & Pages → 建立 → 連接 GitHub，選這個倉庫。Build command `npm run build`，Deploy command `npx wrangler deploy`，Worker 名稱 `fdfz-club`（要和 [`wrangler.jsonc`](wrangler.jsonc) 一致）。部署完到 Worker → Settings → Domains & Routes → Add → Custom domain，填 `club.fdfz.click`。之後每次推到 `main` 都會自動重新部署。
+4. **Supabase → Authentication → URL Configuration → Redirect URLs** 加上 `https://club.fdfz.click/**`（Site URL 不要改）。
+5. 上線後，在帳號中心 fdfz-click-account 的 `src/constants.js` 的 `SITES` 加一行社團活動，「我的帳號」才會出現入口。
 
 `.env.production` 已經放好 Supabase 的網址和 publishable key（和權益牆、樹洞相同）。
 
-## 寄信
+## 不寄信
 
-沿用樹洞的做法：資料庫把要寄的信放進 `club_email_outbox`，Edge Function `club-mailer` 每 5 分鐘用 Resend 寄出。
-
-1. 部署函數：`supabase functions deploy club-mailer --no-verify-jwt`（程式在 [`supabase/functions/club-mailer/index.ts`](supabase/functions/club-mailer/index.ts)）。和樹洞共用同一個 Resend，`RESEND_API_KEY` 已經設過就不用再設；寄件人想改的話設 `MAIL_FROM`。
-2. Database → Extensions 開啟 `pg_cron`、`pg_net`，再到 SQL Editor 執行 [`supabase/club_mailer.sql`](supabase/club_mailer.sql)。它排了三個定時任務：每 5 分鐘寄信、每天北京時間 20:00 排好明天活動的提醒、每週日 20:00 合成每週摘要。
-
-會寄的信：關注的社團發新活動（每則即時或每週摘要，同學在帳號頁選）、報名的活動改時間地點或取消、候補遞補成功、活動前一天提醒（可關）、幹部申請通過或退回、被移除幹部。
-
-**注意 Resend 免費方案每天最多 100 封**（每月 3000 封）。一個 200 人關注的社團發一個活動就會超過，超過的信會延到隔天，三天還沒寄出就放棄。社團多起來後要升級方案，或請大家改用每週摘要。
+社團站不寄任何信（Gerard 2026-10-23 決定）。報名、候補遞補、活動改時間地點或取消、幹部申請結果，都只顯示在網站上：活動頁和「我的」頁會標出已取消、有變動和原本的安排，申請結果在帳號頁的「我的申請」。重要的變動請幹部另外在群裡通知。
 
 ## 頁面一覽
 
@@ -40,7 +32,7 @@
 | 活動詳情（報名、候補、取消報名、加入行事曆、複製連結） | `/e/:id` | 所有人，報名要登入 |
 | 社團列表、社團頁（介紹、幹部、即將舉辦、過去的活動、關注） | `/clubs`、`/c/:id` | 所有人，關注要登入 |
 | 我的活動（報名的、去過的、關注的社團） | `/mine` | 已驗證同學 |
-| 帳號（我管理的、通知設定、申請成為社長／副社長、我的申請、語言） | `/account` | 已驗證同學 |
+| 帳號（我管理的、申請成為社長／副社長、我的申請、語言） | `/account` | 已驗證同學 |
 | 社團後台（活動、報名名單與 CSV、取消活動、社團介紹、幹部） | `/manage/:club` | 該社團社長、副社長 |
 | 發活動、改活動 | `/manage/:club/new`、`/manage/:club/edit/:id` | 該社團社長、副社長 |
 | 審批後台（幹部申請、匯出 CSV、社團、管理部名單） | `/review` | 社團管理部 |
@@ -50,8 +42,8 @@
 - **社團開通**：第一位幹部申請通過時自動建立並開通社團；選「新社團」的申請，管理部通過時可以改成正式名稱。同一個社團被開成兩個，在審批後台「社團 → 管理 → 合併」。停用的社團和它的活動不會出現在網站上，資料保留。
 - **幹部申請表**欄位照 2026-10-23 定的版本，全部必填；姓名、學號、班級（學號中間四位）從帳號帶入不能改。電話、政治面貌、處分紀錄等只有申請人本人和社團管理部讀得到，CSV 也只有管理部能匯出：可以匯出單份、勾選的幾份，或目前篩選的全部（開頭有 BOM，Excel 打開不亂碼）。報名名單同樣可以匯出全部或勾選的人。兩項老師意見是申請人自填，需要時線下核實。
 - **清除敏感資料**：建議每學年做一次。管理部成員在「審批後台 → 管理部」按「清除一年前的敏感資料」，處理完超過一年的申請會清掉電話、微信、政治面貌、成績、處分等欄位，保留社團、崗位、姓名、學號和結果。
-- **報名**：人數上限選填，沒填就是不限人數。額滿後進候補，有人取消或上限調高時依報名先後自動遞補並寄信。已經有人報名後，上限不能調到比已報名人數少，額外問題（最多 2 題）也不能再改。
-- **時間**：一律存成 timestamptz，畫面用瀏覽器時區顯示，寄信和提醒用北京時間。
+- **報名**：人數上限選填，沒填就是不限人數。額滿後進候補，有人取消或上限調高時依報名先後自動遞補。已經有人報名後，上限不能調到比已報名人數少，額外問題（最多 2 題）也不能再改。
+- **時間**：一律存成 timestamptz，畫面用瀏覽器時區顯示。
 
 ## 在自己電腦上執行
 

@@ -14,7 +14,6 @@ import ApplyForm from '../components/ApplyForm.vue'
 
 const route = useRoute()
 const profile = computed(() => auth.profile ?? {})
-const prefs = ref({ weekly_digest: false, remind_day_before: true })
 const apps = ref([])
 const pendingCount = ref(0)
 
@@ -26,13 +25,7 @@ async function loadApps() {
 }
 
 onMounted(async () => {
-  const uid = auth.session.user.id
-  const [p] = await Promise.all([
-    supabase.from('club_prefs').select('*').eq('user_id', uid).maybeSingle(),
-    loadApps(),
-    loadClubRoles(),
-  ])
-  if (p.data) prefs.value = p.data
+  await Promise.all([loadApps(), loadClubRoles()])
   if (auth.club.isStaff) {
     const { count } = await supabase.from('club_applications').select('id', { count: 'exact', head: true }).eq('status', 'pending')
     pendingCount.value = count ?? 0
@@ -43,19 +36,8 @@ onMounted(async () => {
   }
 })
 
-async function savePrefs(patch) {
-  const old = { ...prefs.value }
-  Object.assign(prefs.value, patch)
-  const { error } = await supabase.from('club_prefs')
-    .upsert({ user_id: auth.session.user.id, weekly_digest: prefs.value.weekly_digest, remind_day_before: prefs.value.remind_day_before })
-  if (error) {
-    prefs.value = old
-    toast(errorText(error))
-  } else toast('已儲存')
-}
-
 async function applied() {
-  toast('已送出申請，審核結果會寄信通知你')
+  toast('已送出申請，審核結果會顯示在「我的申請」')
   await loadApps()
 }
 
@@ -101,30 +83,6 @@ async function logout() {
           <Icon name="go" class="go" :size="18" />
         </router-link>
       </template>
-
-      <h2 class="sec-t">{{ t('通知') }}</h2>
-      <div class="card">
-        <fieldset class="vstack" style="gap:8px">
-          <legend class="field-t">{{ t('關注的社團發新活動時') }}</legend>
-          <div class="grid2" style="margin-top:4px">
-            <label class="opt"><input type="radio" name="notify" :checked="!prefs.weekly_digest" @change="savePrefs({ weekly_digest: false })" /><span>{{ t('每則寄一封') }}<small>{{ t('不會錯過名額有限的活動') }}</small></span></label>
-            <label class="opt"><input type="radio" name="notify" :checked="prefs.weekly_digest" @change="savePrefs({ weekly_digest: true })" /><span>{{ t('每週一封摘要') }}<small>{{ t('週日晚上寄出') }}</small></span></label>
-          </div>
-        </fieldset>
-        <div style="border-top:1px solid var(--border);padding-top:14px">
-          <button type="button" class="switch" role="switch" aria-checked="true" disabled>
-            <span><b>{{ t('報名的活動有變動') }}</b><br /><span class="muted small">{{ t('改時間、改地點、取消、候補遞補時一定會寄，不能關') }}</span></span>
-            <span class="knob" aria-hidden="true" />
-          </button>
-        </div>
-        <div style="border-top:1px solid var(--border);padding-top:14px">
-          <button type="button" class="switch" role="switch" :aria-checked="prefs.remind_day_before" @click="savePrefs({ remind_day_before: !prefs.remind_day_before })">
-            <span><b>{{ t('活動前一天提醒') }}</b><br /><span class="muted small">{{ t('前一天晚上 8 點寄出') }}</span></span>
-            <span class="knob" aria-hidden="true" />
-          </button>
-        </div>
-        <p class="muted tiny">{{ t('信會寄到你帳號的電子郵件。') }}</p>
-      </div>
 
       <h2 id="apply" class="sec-t">{{ t('申請成為社團幹部') }}</h2>
       <ApplyForm @done="applied" />

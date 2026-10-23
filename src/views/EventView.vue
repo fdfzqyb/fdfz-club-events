@@ -73,7 +73,7 @@ async function register() {
   busy.value = false
   if (err) return (error.value = errorText(err))
   askOpen.value = false
-  toast(data === 'waitlist' ? '已經額滿，你在候補名單上，有空位會依序遞補並寄信給你' : '報名成功')
+  toast(data === 'waitlist' ? '已經額滿，你在候補名單上，有空位會依序遞補' : '報名成功')
   await load()
 }
 
@@ -150,7 +150,7 @@ const back = () => (window.history.state?.back ? router.back() : router.push('/'
                 <button v-if="!started" class="btn plain small" type="button" :disabled="busy" @click="unregister">{{ t('取消報名') }}</button>
               </div>
               <p v-for="(q, i) in ev.questions" :key="i" class="small">{{ q }} <b>{{ ev.my_answers?.[i] }}</b></p>
-              <p class="small muted">{{ ev.my_status === 'going' ? t('時間地點有變動會寄信給你。') : t('有人取消時會依序遞補，遞補成功會寄信給你。') }}</p>
+              <p class="small muted">{{ ev.my_status === 'going' ? t('時間地點有變動會顯示在這裡和「我的」頁。') : t('有人取消時會依序遞補，到「我的」頁可以看狀態。') }}</p>
             </div>
             <div v-else-if="started" class="cancelled-box"><b>{{ t('活動已經開始，不能報名了') }}</b></div>
             <div v-else-if="closed" class="cancelled-box"><b>{{ t('報名已經截止') }}</b></div>
@@ -158,7 +158,7 @@ const back = () => (window.history.state?.back ? router.back() : router.push('/'
               <button class="btn block" type="button" :disabled="busy" @click="startRegister">
                 <Icon name="check" />{{ !canAct() ? t('登入後報名') : full ? t('額滿了，排候補') : t('我會參加') }}
               </button>
-              <p class="muted tiny center">{{ canAct() ? t('報名後隨時可以取消。時間地點有變動會寄信給你。') : t('用校園帳號登入，不用另外註冊。') }}</p>
+              <p class="muted tiny center">{{ canAct() ? t('報名後隨時可以取消。') : t('用校園帳號登入，不用另外註冊。') }}</p>
               <p v-if="error && !askOpen" class="error">{{ t(error) }}</p>
             </div>
 

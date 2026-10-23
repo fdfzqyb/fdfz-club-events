@@ -62,7 +62,7 @@ async function approve(a) {
   const { error } = await supabase.rpc('club_review_application', { p_id: a.id, p_approve: true, p_club_name: names.value[a.id] ?? a.new_club_name })
   busy.value = false
   if (error) return toast(errorText(error))
-  toast('已通過，結果會寄信通知申請人')
+  toast('已通過，申請人在帳號頁會看到結果')
   await Promise.all([loadApps(), loadClubs()])
 }
 const rejecting = ref(null)
@@ -78,7 +78,7 @@ async function confirmReject() {
   const { error } = await supabase.rpc('club_review_application', { p_id: rejecting.value.id, p_approve: false, p_reason: reason.value.trim() })
   if (error) return (rejectError.value = errorText(error))
   rejecting.value = null
-  toast('已退回，理由會寄信通知申請人')
+  toast('已退回，申請人在帳號頁會看到理由')
   await loadApps()
 }
 
@@ -128,7 +128,7 @@ async function call(fn, args, done) {
   managing.value = managing.value && clubs.value.find((c) => c.id === managing.value.id)
   return true
 }
-const removeOfficer = (c, o) => call('club_remove_member', { p_club: c.id, p_user: o.user_id }, '已移除，會寄信通知對方')
+const removeOfficer = (c, o) => call('club_remove_member', { p_club: c.id, p_user: o.user_id }, '已移除')
 const toggleActive = (c) => call('club_set_active', { p_club: c.id, p_active: !c.active }, c.active ? '已停用，社團和活動不再公開' : '已開通')
 const rename = (c) => call('club_rename', { p_club: c.id, p_name: renameTo.value }, '已改名')
 async function merge(c) {
@@ -293,11 +293,11 @@ async function removeStaff(s) {
     <Modal v-if="rejecting" :open="!!rejecting" :title="t('退回這份申請')" @update:open="(v) => !v && (rejecting = null)">
       <p class="small muted">{{ appClub(rejecting) }} · {{ t(ROLE_LABEL[rejecting.role]) }} · {{ rejecting.full_name }}</p>
       <label class="field"><span>{{ t('退回理由') }}<span class="req">*</span></span>
-        <textarea v-model="reason" maxlength="500" :placeholder="t('會寄給申請人，例如：請先由現任社長在社員群組確認換屆結果。')" /></label>
+        <textarea v-model="reason" maxlength="500" :placeholder="t('申請人會在帳號頁看到，例如：請先由現任社長在社員群組確認換屆結果。')" /></label>
       <p v-if="rejectError" class="error">{{ t(rejectError) }}</p>
       <div class="actions" style="justify-content:flex-end">
         <button class="btn plain" type="button" @click="rejecting = null">{{ t('返回') }}</button>
-        <button class="btn" type="button" :disabled="reason.trim().length < 2" @click="confirmReject">{{ t('退回並通知') }}</button>
+        <button class="btn" type="button" :disabled="reason.trim().length < 2" @click="confirmReject">{{ t('確定退回') }}</button>
       </div>
     </Modal>
 
@@ -311,7 +311,7 @@ async function removeStaff(s) {
           </div>
           <p v-if="!managing.officers.length" class="muted small">{{ t('沒有幹部') }}</p>
         </div>
-        <p class="muted tiny">{{ t('移除後對方會收到通知信，不能再替這個社團發活動。過去發的活動保留。') }}</p>
+        <p class="muted tiny">{{ t('移除後對方不能再替這個社團發活動，過去發的活動保留。網站不會通知對方。') }}</p>
       </div>
       <label class="field"><span>{{ t('社團名稱') }}</span>
         <span class="select-row"><input v-model="renameTo" type="text" maxlength="40" /><button class="btn plain small" type="button" :disabled="!renameTo.trim() || renameTo.trim() === managing.name" @click="rename(managing)">{{ t('改名') }}</button></span>

@@ -2,7 +2,6 @@
 import { t } from '../i18n'
 import { computed, ref, onMounted } from 'vue'
 import { supabase } from '../supabase'
-import { auth } from '../auth'
 import { badgeDay, timeRange, md, hm } from '../format'
 import Icon from '../components/Icon.vue'
 import ClubAvatar from '../components/ClubAvatar.vue'
@@ -11,19 +10,15 @@ import ClubRow from '../components/ClubRow.vue'
 const tab = ref('reg')
 const regs = ref([])
 const clubs = ref([])
-const prefs = ref(null)
 const loading = ref(true)
 
 onMounted(async () => {
-  const uid = auth.session.user.id
-  const [r, f, p] = await Promise.all([
+  const [r, f] = await Promise.all([
     supabase.from('club_event_feed').select('*').not('my_status', 'is', null).order('starts_at'),
     supabase.from('club_club_feed').select('*').eq('following', true).order('name'),
-    supabase.from('club_prefs').select('*').eq('user_id', uid).maybeSingle(),
   ])
   regs.value = r.data ?? []
   clubs.value = f.data ?? []
-  prefs.value = p.data
   loading.value = false
 })
 
@@ -65,7 +60,7 @@ function changed(e) {
           <span v-else-if="e.my_status === 'going'" class="status st-going">{{ t('已報名') }}</span>
           <span v-else class="status st-wait">{{ t('候補第 {n} 位', { n: e.my_waitlist_pos }) }}</span>
         </router-link>
-        <p v-if="upcoming.some((e) => e.my_status === 'waitlist')" class="note sun"><Icon name="bell" :size="20" /><span>{{ t('候補的人有空位時會依序遞補，遞補成功會寄信給你。') }}</span></p>
+        <p v-if="upcoming.some((e) => e.my_status === 'waitlist')" class="note sun"><Icon name="bell" :size="20" /><span>{{ t('候補的人有空位時會依序遞補，狀態會在這裡更新。') }}</span></p>
         <template v-if="past.length">
           <h2 class="sec-t">{{ t('去過的') }}</h2>
           <div class="card">
@@ -78,10 +73,7 @@ function changed(e) {
       </div>
 
       <div v-else class="vstack">
-        <div class="card">
-          <div class="row"><b>{{ t('新活動通知') }}</b><router-link class="small" to="/account">{{ prefs?.weekly_digest ? t('改成每則即時寄') : t('改成每週摘要') }}</router-link></div>
-          <p class="muted small">{{ prefs?.weekly_digest ? t('目前設定：每週日晚上寄一封摘要。') : t('目前設定：關注的社團一發活動就寄信。') }}</p>
-        </div>
+        <p class="muted small">{{ t('關注的社團發的活動，會出現在活動牆的「我關注的」。') }}</p>
         <p v-if="!clubs.length" class="empty">{{ t('還沒有關注社團。') }}<router-link to="/clubs">{{ t('看看有哪些社團') }}</router-link></p>
         <ClubRow v-for="c in clubs" :key="c.id" :club="c" line="next" right="following" />
       </div>

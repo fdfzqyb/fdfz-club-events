@@ -2,13 +2,13 @@
 -- 前提：同一個 Supabase 專案已執行過 fdfz-wall 的 supabase/schema.sql
 --       （需要 profiles、verify_status、is_approved()、is_admin()）。
 -- 用法：Supabase 後台 → SQL Editor，整份貼上後按 Run，只需執行一次。
---       寄信和定時任務另見 club_mailer.sql。
+--       社團站不寄信：報名、遞補、改時間地點、取消的結果都只顯示在網站上。
 --
 -- 原則：
 --   * 活動和已開通的社團對所有人公開（未登入也看得到），報名、關注要登入且校園卡已審核。
 --   * 幹部申請含電話、政治面貌、處分紀錄等敏感資料，只有申請人本人和社團管理部讀得到。
 --   * 報名名單只有本人和該社團幹部看得到。
---   * 寫入一律走下面的 security definer 函數（關注、通知設定除外），前端不能直接改表。
+--   * 寫入一律走下面的 security definer 函數（關注除外），前端不能直接改表。
 --   * 不動權益牆的 profiles.role；社團管理部、幹部都是社團站自己的表。
 
 -------------------------------------------------------------------------------
@@ -140,37 +140,6 @@ create table club_follows (
 );
 create index on club_follows (club_id);
 
--- 通知設定（沒有這一列 = 預設：每則即時寄、活動前一天提醒）
-create table club_prefs (
-  user_id uuid primary key references profiles(id) on delete cascade,
-  weekly_digest boolean not null default false,  -- 關注的社團發新活動：false 每則寄一封，true 每週一封摘要
-  remind_day_before boolean not null default true
-);
-
--- 待寄的信（由 club-mailer Edge Function 用 service role 讀取後寄出並填 sent_at）
--- payload 存寄信當下的活動資料（標題、時間、地點、社團名稱等），寄信時不用再查
-create table club_email_outbox (
-  id bigint generated always as identity primary key,
-  user_id uuid not null references profiles(id) on delete cascade,
-  kind text not null check (kind in (
-    'new_event',          -- 關注的社團發了新活動（即時）
-    'digest_item',        -- 同上，等每週摘要一起寄（不會單獨寄出）
-    'digest',             -- 每週摘要
-    'event_changed',      -- 報名的活動改了時間或地點
-    'event_cancelled',    -- 報名的活動取消
-    'promoted',           -- 候補遞補成功
-    'reminder',           -- 活動前一天提醒
-    'application_result', -- 幹部申請通過或退回
-    'member_removed'      -- 被移除幹部
-  )),
-  event_id bigint references club_events on delete cascade,
-  payload jsonb not null default '{}',
-  created_at timestamptz not null default now(),
-  sent_at timestamptz
-);
-create index on club_email_outbox (created_at) where sent_at is null;
-create index on club_email_outbox (user_id, kind) where sent_at is null;
-
 -------------------------------------------------------------------------------
 -- 3. 權限判斷
 -------------------------------------------------------------------------------
@@ -210,8 +179,6 @@ alter table club_applications  enable row level security;
 alter table club_events        enable row level security;
 alter table club_registrations enable row level security;
 alter table club_follows       enable row level security;
-alter table club_prefs         enable row level security;
-alter table club_email_outbox  enable row level security;
 
 create policy "管理部可看名單" on club_staff for select using (club_is_staff() or is_admin());
 create policy "已開通的社團公開" on club_clubs for select
@@ -230,10 +197,6 @@ create policy "關注已開通社團" on club_follows for insert
   with check (user_id = auth.uid() and is_approved()
               and exists (select 1 from club_clubs c where c.id = club_id and c.active));
 create policy "取消關注" on club_follows for delete using (user_id = auth.uid());
-create policy "看自己的設定" on club_prefs for select using (user_id = auth.uid());
-create policy "建立自己的設定" on club_prefs for insert with check (user_id = auth.uid() and is_approved());
-create policy "改自己的設定" on club_prefs for update using (user_id = auth.uid()) with check (user_id = auth.uid());
--- club_email_outbox 沒有任何規則：前端完全讀不到
 
 -------------------------------------------------------------------------------
 -- 4. 公開的讀取（未登入也能用）
@@ -302,43 +265,26 @@ $$;
 -- 5. 報名
 -------------------------------------------------------------------------------
 
--- 把候補依序補進空位，並寄信通知遞補的人。呼叫前要先鎖住活動那一列。
+-- 把候補依序補進空位。呼叫前要先鎖住活動那一列。
 create function club_fill_spots(p_event bigint) returns void
 language plpgsql security definer set search_path = public as $$
 declare
   e club_events;
   free int;
-  r record;
 begin
   select * into e from club_events where id = p_event;
   if e.status <> 'scheduled' or e.starts_at <= now() then return; end if;
-  if e.capacity is null then
-    free := null;
-  else
+  if e.capacity is not null then
     free := e.capacity - (select count(*) from club_registrations where event_id = p_event and status = 'going');
     if free <= 0 then return; end if;
   end if;
-  for r in
+  update club_registrations set status = 'going'
+  where event_id = p_event and user_id in (
     select user_id from club_registrations
     where event_id = p_event and status = 'waitlist'
     order by queued_at
-    limit free
-  loop
-    update club_registrations set status = 'going' where event_id = p_event and user_id = r.user_id;
-    insert into club_email_outbox (user_id, kind, event_id, payload)
-    values (r.user_id, 'promoted', p_event, club_event_payload(p_event));
-  end loop;
+    limit free);
 end $$;
-
--- 寄信用的活動資料
-create function club_event_payload(p_event bigint) returns jsonb
-language sql stable security definer set search_path = public as $$
-  select jsonb_build_object(
-    'event_id', e.id, 'title', e.title, 'club', c.name,
-    'starts_at', e.starts_at, 'ends_at', e.ends_at, 'location', e.location)
-  from club_events e join club_clubs c on c.id = e.club_id
-  where e.id = p_event;
-$$;
 
 -- 報名。回傳 'going'（報上了）或 'waitlist'（額滿，進候補）
 create function club_register(p_event bigint, p_answers jsonb default '[]')
@@ -415,7 +361,7 @@ $$;
 
 -- 發活動（p_id 為空）或改活動。p 的欄位：title、kind、starts_at、ends_at、location、
 -- poster_url、description、capacity、reg_deadline、questions。回傳活動 id。
--- 新活動寄給關注的人；改了時間或地點寄給已報名和候補的人；上限調高會自動遞補候補。
+-- 改了時間或地點會記下原本的，活動頁顯示「有變動」；上限調高會自動遞補候補。
 create function club_save_event(p_club bigint, p_id bigint, p jsonb)
 returns bigint
 language plpgsql security definer set search_path = public as $$
@@ -452,16 +398,6 @@ begin
     values (p_club, v_title, nullif(p->>'kind', ''), v_starts, v_ends, v_loc, nullif(p->>'poster_url', ''),
             coalesce(p->>'description', ''), v_cap, nullif(p->>'reg_deadline', '')::timestamptz, qs, auth.uid())
     returning id into eid;
-
-    -- 通知關注的人：選每週摘要的先存起來，週日晚上一起寄
-    insert into club_email_outbox (user_id, kind, event_id, payload)
-    select f.user_id,
-           case when coalesce(pr.weekly_digest, false) then 'digest_item' else 'new_event' end,
-           eid, club_event_payload(eid)
-    from club_follows f
-    join profiles pf on pf.id = f.user_id and pf.verify_status = 'approved'
-    left join club_prefs pr on pr.user_id = f.user_id
-    where f.club_id = p_club;
     return eid;
   end if;
 
@@ -488,18 +424,11 @@ begin
     changed_at = case when moved then now() else changed_at end,
     updated_at = now()
   where id = p_id;
-
-  if moved then
-    insert into club_email_outbox (user_id, kind, event_id, payload)
-    select r.user_id, 'event_changed', p_id,
-           club_event_payload(p_id) || jsonb_build_object('old_starts_at', e.starts_at, 'old_location', e.location)
-    from club_registrations r where r.event_id = p_id and r.status in ('going', 'waitlist');
-  end if;
   perform club_fill_spots(p_id);
   return p_id;
 end $$;
 
--- 取消活動並寄信給已報名和候補的人；活動留在社團頁，標示為已取消
+-- 取消活動；活動留在社團頁，標示為已取消並顯示原因
 create function club_cancel_event(p_event bigint, p_reason text) returns void
 language plpgsql security definer set search_path = public as $$
 declare
@@ -510,10 +439,6 @@ begin
   if e.status = 'cancelled' then return; end if;
   if char_length(btrim(coalesce(p_reason, ''))) < 2 then raise exception '請填取消原因'; end if;
   update club_events set status = 'cancelled', cancel_reason = btrim(p_reason), updated_at = now() where id = p_event;
-  insert into club_email_outbox (user_id, kind, event_id, payload)
-  select r.user_id, 'event_cancelled', p_event,
-         club_event_payload(p_event) || jsonb_build_object('reason', btrim(p_reason))
-  from club_registrations r where r.event_id = p_event and r.status in ('going', 'waitlist');
 end $$;
 
 -- 報名名單（只有該社團幹部）：姓名、學號、班級、狀態、報名時間、額外問題的答案
@@ -634,7 +559,6 @@ begin
     update club_applications set status = 'rejected', reject_reason = btrim(p_reason),
       reviewed_by = auth.uid(), reviewer_name = me_name, reviewed_at = now()
     where id = p_id;
-    cname := coalesce((select name from club_clubs where id = a.club_id), a.new_club_name);
   else
     cid := a.club_id;
     if cid is null then
@@ -653,10 +577,6 @@ begin
       reviewed_by = auth.uid(), reviewer_name = me_name, reviewed_at = now()
     where id = p_id;
   end if;
-
-  insert into club_email_outbox (user_id, kind, payload)
-  values (a.user_id, 'application_result', jsonb_build_object(
-    'approved', p_approve, 'club', cname, 'role', a.role, 'reason', btrim(coalesce(p_reason, ''))));
 end $$;
 
 -------------------------------------------------------------------------------
@@ -682,18 +602,12 @@ begin
   order by c.active desc, c.name;
 end $$;
 
--- 移除幹部（換屆、卸任）。過去發的活動保留，寄信通知本人
+-- 移除幹部（換屆、卸任）。過去發的活動保留
 create function club_remove_member(p_club bigint, p_user uuid) returns void
 language plpgsql security definer set search_path = public as $$
-declare
-  cname text;
 begin
   if not club_is_staff() then raise exception '只有社團管理部可以移除幹部'; end if;
   delete from club_members where club_id = p_club and user_id = p_user;
-  if not found then return; end if;
-  select name into cname from club_clubs where id = p_club;
-  insert into club_email_outbox (user_id, kind, payload)
-  values (p_user, 'member_removed', jsonb_build_object('club', cname));
 end $$;
 
 -- 開通／停用社團。停用後社團和它的活動不再出現在網站上（資料保留）
@@ -784,59 +698,10 @@ begin
   return n;
 end $$;
 
--------------------------------------------------------------------------------
--- 9. 定時任務用（只給 pg_cron / service role）
--------------------------------------------------------------------------------
-
--- 活動前一天晚上提醒：明天（北京時間）開始、沒取消的活動，寄給已報名且沒關提醒的人
-create function club_queue_reminders() returns int
-language plpgsql security definer set search_path = public as $$
-declare
-  n int;
-begin
-  insert into club_email_outbox (user_id, kind, event_id, payload)
-  select r.user_id, 'reminder', e.id, club_event_payload(e.id)
-  from club_events e
-  join club_clubs c on c.id = e.club_id and c.active
-  join club_registrations r on r.event_id = e.id and r.status = 'going'
-  left join club_prefs pr on pr.user_id = r.user_id
-  where e.status = 'scheduled'
-    and (e.starts_at at time zone 'Asia/Shanghai')::date = (now() at time zone 'Asia/Shanghai')::date + 1
-    and coalesce(pr.remind_day_before, true)
-    and not exists (select 1 from club_email_outbox o
-                    where o.user_id = r.user_id and o.event_id = e.id and o.kind = 'reminder');
-  get diagnostics n = row_count;
-  return n;
-end $$;
-
--- 每週摘要：把累積的 digest_item 合成每人一封 digest（已取消或已過的活動不放）
-create function club_build_digests() returns int
-language plpgsql security definer set search_path = public as $$
-declare
-  n int;
-begin
-  with items as (
-    update club_email_outbox o set sent_at = now()
-    where o.kind = 'digest_item' and o.sent_at is null
-    returning o.user_id, o.event_id),
-  live as (
-    select i.user_id, club_event_payload(e.id) as ev, e.starts_at
-    from items i join club_events e on e.id = i.event_id
-    where e.status = 'scheduled' and e.starts_at > now())
-  insert into club_email_outbox (user_id, kind, payload)
-  select user_id, 'digest', jsonb_build_object('events', jsonb_agg(ev order by starts_at))
-  from live group by user_id;
-  get diagnostics n = row_count;
-  return n;
-end $$;
-
 revoke execute on function club_fill_spots(bigint) from public, anon, authenticated;
-revoke execute on function club_queue_reminders() from public, anon, authenticated;
-revoke execute on function club_build_digests() from public, anon, authenticated;
-grant execute on function club_queue_reminders(), club_build_digests() to service_role;
 
 -------------------------------------------------------------------------------
--- 10. 海報、頭像、封面的儲存空間
+-- 9. 海報、頭像、封面的儲存空間
 -------------------------------------------------------------------------------
 
 -- 公開的 bucket：路徑第一段是社團 id，只有該社團幹部能上傳、覆蓋、刪除

@@ -151,8 +151,8 @@ async function save() {
       </div>
 
       <p class="note sun"><Icon name="bell" :size="20" />
-        <span v-if="eventId">{{ t('改了時間或地點，系統會自動寄信給已報名和候補的 {n} 人。', { n: regCount }) }}</span>
-        <span v-else>{{ t('發布後會出現在活動牆，並寄通知給關注{club}的 {n} 人。之後改時間、地點或取消，系統會自動寄信給已報名的人。', { club: club?.name, n: followers }) }}</span>
+        <span v-if="eventId">{{ t('改了時間或地點，活動頁會標出「有變動」和原本的安排。網站不會寄信，已報名的 {n} 人請另外通知。', { n: regCount }) }}</span>
+        <span v-else>{{ t('發布後馬上出現在活動牆，關注{club}的 {n} 人在「我關注的」也會看到。網站不會寄信通知。', { club: club?.name, n: followers }) }}</span>
       </p>
       <p v-if="error" class="error">{{ t(error) }}</p>
       <div class="actions">

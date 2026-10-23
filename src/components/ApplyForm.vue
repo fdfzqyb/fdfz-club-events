@@ -21,7 +21,8 @@ const blank = () => ({
 const f = reactive(blank())
 
 onMounted(async () => {
-  const { data } = await supabase.from('club_club_feed').select('id, name').order('name')
+  // 全部社團，含還沒開通的（社團名單預先建好，第一位幹部通過時開通）
+  const { data } = await supabase.rpc('club_apply_options')
   clubs.value = data ?? []
 })
 

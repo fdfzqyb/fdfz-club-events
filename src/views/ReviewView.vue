@@ -251,7 +251,7 @@ async function removeStaff(s) {
               <tbody>
                 <tr v-for="c in shownClubs" :key="c.id">
                   <td><b>{{ c.name }}</b><br /><span class="muted tiny">{{ t('關注 {n}', { n: c.follower_count }) }}</span></td>
-                  <td><span class="status" :class="c.active ? 'st-open' : 'st-full'">{{ c.active ? t('已開通') : t('已停用') }}</span></td>
+                  <td><span class="status" :class="c.active ? 'st-open' : 'st-full'">{{ c.active ? t('已開通') : c.officers.length ? t('已停用') : t('未開通') }}</span></td>
                   <td>
                     <template v-for="(o, i) in c.officers" :key="o.user_id">{{ i ? t('、') : '' }}{{ o.full_name }}（{{ t(ROLE_LABEL[o.role]) }}）</template>
                     <span v-if="!c.officers.length" class="muted">{{ t('無') }}</span>
@@ -263,7 +263,7 @@ async function removeStaff(s) {
               </tbody>
             </table>
           </div>
-          <p class="muted tiny">{{ t('社團在第一位幹部申請通過時自動開通。停用的社團不會出現在網站上，資料保留。') }}</p>
+          <p class="muted tiny">{{ t('社團名單預先建好，一開始未開通；第一位幹部申請通過時自動開通。未開通和停用的社團不會出現在網站上，資料保留。') }}</p>
         </div>
       </div>
 
@@ -324,7 +324,7 @@ async function removeStaff(s) {
         <small>{{ t('同一個社團被開通成兩個時用。這個社團的活動、幹部、關注會搬過去。') }}</small>
       </label>
       <div class="actions" style="justify-content:space-between">
-        <button class="btn plain" type="button" @click="toggleActive(managing)">{{ managing.active ? t('停用社團') : t('重新開通') }}</button>
+        <button class="btn plain" type="button" @click="toggleActive(managing)">{{ managing.active ? t('停用社團') : t('開通') }}</button>
         <button class="btn" type="button" @click="managing = null">{{ t('完成') }}</button>
       </div>
     </Modal>

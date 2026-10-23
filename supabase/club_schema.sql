@@ -64,7 +64,7 @@ create index on club_members (user_id);
 create table club_applications (
   id bigint generated always as identity primary key,
   user_id uuid not null references profiles(id) on delete cascade,
-  club_id bigint references club_clubs on delete set null, -- 申請已開通社團
+  club_id bigint references club_clubs on delete set null, -- 申請名單裡的社團
   new_club_name text check (char_length(btrim(new_club_name)) between 1 and 40), -- 或申請新社團
   role club_role not null,                       -- 申請崗位
   full_name text not null,                       -- 姓名（自動帶入）
@@ -493,13 +493,14 @@ begin
   if v_club is null and v_new is null then raise exception '請選擇社團'; end if;
   if v_club is not null then
     v_new := null;
-    if not exists (select 1 from club_clubs where id = v_club and active) then raise exception '找不到這個社團'; end if;
+    -- 未開通的社團也能申請（名單預先建好，第一位幹部通過時開通）
+    if not exists (select 1 from club_clubs where id = v_club) then raise exception '找不到這個社團'; end if;
     if exists (select 1 from club_members where club_id = v_club and user_id = me.id and role::text = p->>'role') then
       raise exception '你已經是這個社團的幹部';
     end if;
   else
-    -- 名稱已經是開通的社團，就直接申請那個社團
-    select id into v_club from club_clubs where active and lower(name) = lower(v_new);
+    -- 名稱已經在社團名單裡，就直接申請那個社團
+    select id into v_club from club_clubs where lower(name) = lower(v_new);
     if v_club is not null then v_new := null; end if;
   end if;
 
@@ -528,6 +529,12 @@ begin
   return aid;
 end $$;
 
+-- 申請表的社團下拉選單：全部社團，含還沒開通的（預先建好的社團名單）
+create function club_apply_options() returns table (id bigint, name text, active boolean)
+language sql stable security definer set search_path = public as $$
+  select c.id, c.name, c.active from club_clubs c where is_approved() order by c.name;
+$$;
+
 -- 撤回自己還在審核中的申請
 create function club_withdraw_application(p_id bigint) returns void
 language plpgsql security definer set search_path = public as $$
@@ -536,8 +543,8 @@ begin
   if not found then raise exception '這份申請已經處理過，不能撤回'; end if;
 end $$;
 
--- 審批（只有社團管理部）。通過：成為幹部；申請新社團時同時建立並開通社團，
--- p_club_name 可改成正式名稱（已有同名社團就用那一個，未開通的會開通）。退回要附理由。
+-- 審批（只有社團管理部）。通過：成為幹部，社團還沒開通的會一併開通；申請新社團時同時建立社團，
+-- p_club_name 可改成正式名稱（已有同名社團就用那一個）。退回要附理由。
 create function club_review_application(p_id bigint, p_approve boolean, p_reason text default null,
                                         p_club_name text default null)
 returns void
@@ -566,10 +573,9 @@ begin
       select id into cid from club_clubs where lower(name) = lower(cname);
       if cid is null then
         insert into club_clubs (name) values (cname) returning id into cid;
-      else
-        update club_clubs set active = true where id = cid;
       end if;
     end if;
+    update club_clubs set active = true where id = cid and not active;
     select name into cname from club_clubs where id = cid;
     insert into club_members (club_id, user_id, role) values (cid, a.user_id, a.role)
     on conflict (club_id, user_id) do update set role = excluded.role;
@@ -610,7 +616,7 @@ begin
   delete from club_members where club_id = p_club and user_id = p_user;
 end $$;
 
--- 開通／停用社團。停用後社團和它的活動不再出現在網站上（資料保留）
+-- 開通／停用社團。未開通、停用的社團和它的活動不出現在網站上（資料保留）
 create function club_set_active(p_club bigint, p_active boolean) returns void
 language plpgsql security definer set search_path = public as $$
 begin

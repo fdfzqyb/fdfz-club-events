@@ -14,9 +14,10 @@
    ```sql
    insert into club_staff (user_id) select id from profiles where student_id = '學號' and verify_status = 'approved';
    ```
-3. **Cloudflare**：Workers & Pages → 建立 → 連接 GitHub，選這個倉庫。Build command `npm run build`，Deploy command `npx wrangler deploy`，Worker 名稱 `fdfz-club`（要和 [`wrangler.jsonc`](wrangler.jsonc) 一致）。部署完到 Worker → Settings → Domains & Routes → Add → Custom domain，填 `club.fdfz.click`。之後每次推到 `main` 都會自動重新部署。
-4. **Supabase → Authentication → URL Configuration → Redirect URLs** 加上 `https://club.fdfz.click/**`（Site URL 不要改）。
-5. 上線後，在帳號中心 fdfz-click-account 的 `src/constants.js` 的 `SITES` 加一行社團活動，「我的帳號」才會出現入口。
+3. **社團名單**：在 SQL Editor 整份貼上 [`supabase/club_seed.sql`](supabase/club_seed.sql) 按 Run，預先建好 64 個社團（名稱照「社团课教室安排2.xlsx」的「社团名称」原文）。重複執行不會重複建立；之後名單有新社團，在檔案裡加一行再執行即可。
+4. **Cloudflare**：Workers & Pages → 建立 → 連接 GitHub，選這個倉庫。Build command `npm run build`，Deploy command `npx wrangler deploy`，Worker 名稱 `fdfz-club`（要和 [`wrangler.jsonc`](wrangler.jsonc) 一致）。部署完到 Worker → Settings → Domains & Routes → Add → Custom domain，填 `club.fdfz.click`。之後每次推到 `main` 都會自動重新部署。
+5. **Supabase → Authentication → URL Configuration → Redirect URLs** 加上 `https://club.fdfz.click/**`（Site URL 不要改）。
+6. 上線後，在帳號中心 fdfz-click-account 的 `src/constants.js` 的 `SITES` 加一行社團活動，「我的帳號」才會出現入口。
 
 `.env.production` 已經放好 Supabase 的網址和 publishable key（和權益牆、樹洞相同）。
 
@@ -39,7 +40,7 @@
 
 ## 幾個規則
 
-- **社團開通**：第一位幹部申請通過時自動建立並開通社團；選「新社團」的申請，管理部通過時可以改成正式名稱。同一個社團被開成兩個，在審批後台「社團 → 管理 → 合併」。停用的社團和它的活動不會出現在網站上，資料保留。
+- **社團開通**：名單裡的社團一開始是「未開通」，不出現在社團列表，但幹部申請表的下拉選單有；第一位社長或副社長的申請通過時自動開通。名單裡找不到的，申請時選「新社團」手填名稱（和名單裡的名稱相同時會自動對上那個社團），通過時建立並開通，管理部可以改成正式名稱。同一個社團被開成兩個，在審批後台「社團 → 管理 → 合併」。未開通、停用的社團和它的活動不會出現在網站上，資料保留。
 - **幹部申請表**欄位照 2026-10-23 定的版本，全部必填；姓名、學號、班級（學號中間四位）從帳號帶入不能改。電話、政治面貌、處分紀錄等只有申請人本人和社團管理部讀得到，CSV 也只有管理部能匯出：可以匯出單份、勾選的幾份，或目前篩選的全部（開頭有 BOM，Excel 打開不亂碼）。報名名單同樣可以匯出全部或勾選的人。兩項老師意見是申請人自填，需要時線下核實。
 - **清除敏感資料**：建議每學年做一次。管理部成員在「審批後台 → 管理部」按「清除一年前的敏感資料」，處理完超過一年的申請會清掉電話、微信、政治面貌、成績、處分等欄位，保留社團、崗位、姓名、學號和結果。
 - **報名**：人數上限選填，沒填就是不限人數。額滿後進候補，有人取消或上限調高時依報名先後自動遞補。已經有人報名後，上限不能調到比已報名人數少，額外問題（最多 2 題）也不能再改。
@@ -64,6 +65,8 @@ npm run dev
 ```bash
 supabase/tests/run.sh ../fdfz-wall/supabase/schema.sql
 ```
+
+`test2.sql` 接著載入 `club_seed.sql`，測未開通社團的申請和開通。
 
 ## 文字與語言
 

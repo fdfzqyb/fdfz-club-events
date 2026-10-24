@@ -9,7 +9,7 @@
 
 ## 上線步驟
 
-1. **資料庫**：Supabase → SQL Editor，整份貼上 [`supabase/club_schema.sql`](supabase/club_schema.sql) 按 Run（只需一次）。它會順便建好公開的 `club-media` 儲存空間（海報、社團頭像和封面，每張 5 MB 以內）。
+1. **資料庫**：Supabase → SQL Editor，整份貼上 [`supabase/club_schema.sql`](supabase/club_schema.sql) 按 Run（只需一次）。它會順便建好公開的 `club-media` 儲存空間（海報、社團頭像和封面）。圖片上傳前會在瀏覽器壓縮成 WebP：海報和封面最長邊 1080 像素，頭像 320 像素，每張通常一兩百 KB。
 2. **第一位社團管理部成員**：在 SQL Editor 執行下面這行（學號換成那位同學的，校園卡要已審核）。之後管理部成員可以在網站的「審批後台 → 管理部」自己加人。
    ```sql
    insert into club_staff (user_id) select id from profiles where student_id = '學號' and verify_status = 'approved';

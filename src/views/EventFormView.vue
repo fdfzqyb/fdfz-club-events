@@ -126,8 +126,9 @@ async function save() {
           </div>
           <label v-else class="upload">
             <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" :disabled="uploading" @change="pickPoster" />
-            <Icon name="plus" />{{ uploading ? t('上傳中…') : t('點這裡上傳圖片') }}<span class="tiny">{{ t('選填，橫式 16:9 最好看，5 MB 以內') }}</span>
+            <Icon name="plus" />{{ uploading ? t('上傳中…') : t('點這裡上傳圖片') }}<span class="tiny">{{ t('選填，橫式 16:9 最好看') }}</span>
           </label>
+          <small class="muted tiny">{{ t('上傳的圖片會壓縮到最長邊 1080 像素，小字可能看不清。建議把海報上的文字也貼到下面的「說明」。') }}</small>
         </div>
         <label class="field"><span>{{ t('說明') }}</span><textarea v-model="f.description" maxlength="3000" style="min-height:140px" /></label>
       </div>

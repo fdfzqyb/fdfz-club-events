@@ -2,6 +2,8 @@
 {
   "name": "fdfz-club-events",
   "compatibility_date": "2026-10-01",
+  // 部署前先建置出 dist（Cloudflare 的 Build command 空著也能部署）
+  "build": { "command": "npm run build" },
   "assets": {
     "directory": "./dist",
     // 讓 /e/12 這類網址重新整理時也回到網站，而不是 404

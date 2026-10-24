@@ -96,11 +96,11 @@ export function download(filename, text, type) {
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
-// 加入行事曆：產生一個 .ics 檔，手機點開就會問要不要加到行事曆。沒填結束時間的預設一小時
+// 加入行事曆：產生一個 .ics 檔，手機點開就會問要不要加到行事曆。沒填結束時間的預設 40 分鐘
 export function downloadIcs(ev, url) {
   const stamp = (v) => new Date(v).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
   const esc = (s) => String(s ?? '').replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/([,;])/g, '\\$1')
-  const end = ev.ends_at ?? new Date(new Date(ev.starts_at).getTime() + 3600000).toISOString()
+  const end = ev.ends_at ?? new Date(new Date(ev.starts_at).getTime() + 40 * 60000).toISOString()
   const lines = [
     'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//FDFZ//club.fdfz.click//ZH', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
     'BEGIN:VEVENT',

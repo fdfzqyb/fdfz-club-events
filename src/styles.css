@@ -75,6 +75,10 @@ label.field>span,.field-t{display:block;font-weight:700;margin-bottom:6px}
 .req{color:var(--coral);font-weight:700;margin-left:2px}
 .field small,.field-s{display:block;color:var(--muted);font-size:13px;margin-top:4px}
 textarea,input[type=text],input[type=number],input[type=date],input[type=time],input[type=datetime-local],select{width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:12px;background:var(--white);min-height:46px}
+/* iOS Safari 的日期、時間框有自己的最小寬度，不理 width:100%，在兩欄裡會超出格子 */
+input[type=date],input[type=time],input[type=datetime-local]{-webkit-appearance:none;appearance:none;display:block;min-width:0;max-width:100%;line-height:22px;color:var(--ink)}
+input::-webkit-date-and-time-value{text-align:left;margin:0}
+label.field{min-width:0}
 textarea:focus,input:focus,select:focus{outline:2px solid var(--coral);outline-offset:-1px}
 textarea{min-height:110px;resize:vertical}
 .grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}

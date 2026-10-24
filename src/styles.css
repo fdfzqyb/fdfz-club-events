@@ -93,6 +93,8 @@ legend{padding:0}
 /* 膠囊與狀態 */
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .chips.scroll{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -20px;padding:0 20px}
+/* 用滑鼠的電腦橫向滑不動，不論視窗多寬都換行顯示；手機照樣左右滑 */
+@media (any-hover:hover) and (any-pointer:fine){.chips.scroll{margin:0;padding:0;flex-wrap:wrap;overflow-x:visible}}
 .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 16px;border-radius:999px;border:1px solid var(--border);background:var(--white);cursor:pointer;min-height:38px;white-space:nowrap}
 .chip[aria-pressed="true"]{background:var(--coral);border-color:var(--coral);color:#fff;font-weight:700}
 .status{font-size:13px;font-weight:700;padding:3px 12px;border-radius:999px;white-space:nowrap;display:inline-flex;align-items:center;gap:4px}

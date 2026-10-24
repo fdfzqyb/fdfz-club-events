@@ -18,6 +18,7 @@ const routes = [
   { path: '/c/:id(\\d+)', component: () => import('./views/ClubView.vue') },
   { path: '/mine', component: () => import('./views/MineView.vue'), meta: { login: true } },
   { path: '/account', component: () => import('./views/AccountView.vue'), meta: { login: true } },
+  { path: '/apply', component: () => import('./views/ApplyView.vue'), meta: { login: true } },
   { path: '/manage/:club(\\d+)', component: () => import('./views/ManageView.vue'), meta: { login: true, officer: true } },
   { path: '/manage/:club(\\d+)/new', component: () => import('./views/EventFormView.vue'), meta: { login: true, officer: true } },
   { path: '/manage/:club(\\d+)/edit/:id(\\d+)', component: () => import('./views/EventFormView.vue'), meta: { login: true, officer: true } },

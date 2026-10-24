@@ -1,7 +1,6 @@
 <script setup>
 import { locale, setLocale, t } from '../i18n'
-import { computed, ref, onMounted, nextTick } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, ref, onMounted } from 'vue'
 import { supabase } from '../supabase'
 import { auth, signOut, loadClubRoles } from '../auth'
 import { accountUrl } from '../fdfz'
@@ -10,9 +9,7 @@ import { md, errorText } from '../format'
 import { toast } from '../toast'
 import Icon from '../components/Icon.vue'
 import ClubAvatar from '../components/ClubAvatar.vue'
-import ApplyForm from '../components/ApplyForm.vue'
 
-const route = useRoute()
 const profile = computed(() => auth.profile ?? {})
 const apps = ref([])
 const pendingCount = ref(0)
@@ -30,16 +27,7 @@ onMounted(async () => {
     const { count } = await supabase.from('club_applications').select('id', { count: 'exact', head: true }).eq('status', 'pending')
     pendingCount.value = count ?? 0
   }
-  if (route.hash === '#apply') {
-    await nextTick()
-    document.getElementById('apply')?.scrollIntoView()
-  }
 })
-
-async function applied() {
-  toast('已送出申請，審核結果會顯示在「我的申請」')
-  await loadApps()
-}
 
 async function withdraw(a) {
   const { error } = await supabase.rpc('club_withdraw_application', { p_id: a.id })
@@ -84,8 +72,11 @@ async function logout() {
         </router-link>
       </template>
 
-      <h2 id="apply" class="sec-t">{{ t('申請成為社團幹部') }}</h2>
-      <ApplyForm @done="applied" />
+      <router-link class="card entry" to="/apply">
+        <span class="club-av md" style="background:var(--sun)"><Icon name="flag" style="color:#fff" /></span>
+        <span class="grow"><b>{{ t('申請成為社團幹部') }}</b><br /><span class="muted small">{{ t('社長、副社長申請，社團管理部審核通過後就能發活動') }}</span></span>
+        <Icon name="go" class="go" :size="18" />
+      </router-link>
 
       <template v-if="apps.length">
         <h3 class="sec-t" style="font-size:16px">{{ t('我的申請') }}</h3>

@@ -64,7 +64,7 @@ async function submit() {
 
 <template>
   <form class="card" novalidate @submit.prevent="submit">
-    <p class="small">{{ t('社長和副社長可以替社團發活動、編輯社團介紹、看報名名單。送出後由社團管理部審核，結果會顯示在下面的「我的申請」。') }}</p>
+    <p class="small">{{ t('社長和副社長可以替社團發活動、編輯社團介紹、看報名名單。送出後由社團管理部審核，結果會顯示在帳號頁的「我的申請」。') }}</p>
     <div class="grid2">
       <div><span class="field-t">{{ t('姓名') }}</span><div class="readonly">{{ profile.full_name }}</div></div>
       <div><span class="field-t">{{ t('班級') }}</span><div class="readonly">{{ classCode }}</div></div>
@@ -99,7 +99,7 @@ async function submit() {
         <option v-for="c in clubs" :key="c.id" :value="c.id">{{ c.name }}</option>
         <option :value="NEW">{{ t('新社團（列表裡找不到）') }}</option>
       </select>
-      <small>{{ t('列表裡的社團已經開通。為了避免同一個社團被打成好幾種名稱，請先在列表裡找。') }}</small>
+      <small>{{ t('列表裡是學校登記的社團。為了避免同一個社團被打成好幾種名稱，請先在列表裡找。') }}</small>
     </label>
     <label v-if="f.club === NEW" class="field"><span>{{ t('新社團名稱') }}<span class="req">*</span></span>
       <input v-model="f.new_club_name" type="text" maxlength="40" />

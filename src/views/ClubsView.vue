@@ -68,7 +68,7 @@ const quiet = computed(() => filtered.value.filter((c) => !c.next_event_at))
         <p v-if="!filtered.length" class="empty">{{ clubs.length ? t('沒有符合的社團') : t('還沒有社團開通') }}</p>
       </template>
       <p class="note"><Icon name="flag" :size="20" />
-        <span>{{ t('沒看到你的社團？請社長或副社長登入後，到') }}<router-link to="/account#apply">{{ t('帳號頁') }}</router-link>{{ t('申請開通。') }}</span>
+        <span>{{ t('沒看到你的社團？請社長或副社長登入後，到') }}<router-link to="/apply">{{ t('帳號頁') }}</router-link>{{ t('申請開通。') }}</span>
       </p>
     </div>
   </main>

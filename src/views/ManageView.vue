@@ -137,7 +137,7 @@ async function saveClub() {
 <template>
   <main>
     <header class="topbar">
-      <router-link class="back" to="/account" :aria-label="t('返回')"><Icon name="back" /></router-link>
+      <router-link class="back" to="/mine" :aria-label="t('返回')"><Icon name="back" /></router-link>
       <h1>{{ t('{name}後台', { name: club?.name ?? '' }) }}</h1>
     </header>
     <p v-if="loading" class="empty">{{ t('載入中…') }}</p>

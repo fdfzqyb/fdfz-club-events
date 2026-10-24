@@ -164,7 +164,7 @@ async function removeStaff(s) {
 <template>
   <main>
     <header class="topbar">
-      <router-link class="back" to="/account" :aria-label="t('返回')"><Icon name="back" /></router-link>
+      <router-link class="back" to="/mine" :aria-label="t('返回')"><Icon name="back" /></router-link>
       <h1>{{ t('審批後台') }}</h1>
     </header>
     <div class="page">

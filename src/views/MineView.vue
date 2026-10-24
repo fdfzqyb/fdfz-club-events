@@ -2,6 +2,8 @@
 import { t } from '../i18n'
 import { computed, ref, onMounted } from 'vue'
 import { supabase } from '../supabase'
+import { auth, loadClubRoles } from '../auth'
+import { ROLE_LABEL } from '../constants'
 import { badgeDay, timeRange, md, hm } from '../format'
 import Icon from '../components/Icon.vue'
 import ClubAvatar from '../components/ClubAvatar.vue'
@@ -11,6 +13,7 @@ const tab = ref('reg')
 const regs = ref([])
 const clubs = ref([])
 const loading = ref(true)
+const pendingCount = ref(0)
 
 onMounted(async () => {
   const [r, f] = await Promise.all([
@@ -20,6 +23,12 @@ onMounted(async () => {
   regs.value = r.data ?? []
   clubs.value = f.data ?? []
   loading.value = false
+  // 社團後台、審批後台的入口放在最上面；申請剛通過時這裡重新讀一次才看得到
+  await loadClubRoles()
+  if (auth.club.isStaff) {
+    const { count } = await supabase.from('club_applications').select('id', { count: 'exact', head: true }).eq('status', 'pending')
+    pendingCount.value = count ?? 0
+  }
 })
 
 const now = Date.now()
@@ -37,9 +46,24 @@ function changed(e) {
 
 <template>
   <main>
-    <header class="topbar"><h1>{{ t('我的活動') }}</h1></header>
+    <header class="topbar"><h1>{{ t('我的') }}</h1></header>
     <div class="page narrow">
-      <h1 class="page-title">{{ t('我的活動') }}</h1>
+      <h1 class="page-title">{{ t('我的') }}</h1>
+      <template v-if="auth.club.clubs.length || auth.club.isStaff">
+        <h2 class="sec-t" style="margin-top:0">{{ t('我管理的') }}</h2>
+        <router-link v-for="c in auth.club.clubs" :key="c.club_id" class="card entry" :to="`/manage/${c.club_id}`">
+          <ClubAvatar :club="{ id: c.club_id, name: c.name, avatar_url: c.avatar_url }" size="md" />
+          <span class="grow"><b>{{ t('{name}後台', { name: c.name }) }}</b><br />
+            <span class="muted small">{{ t('你是{role}', { role: t(ROLE_LABEL[c.role]) }) }} · {{ c.active ? t('發活動、看報名名單') : t('社團已停用，活動不會公開') }}</span></span>
+          <Icon name="go" class="go" :size="18" />
+        </router-link>
+        <router-link v-if="auth.club.isStaff" class="card entry" to="/review">
+          <span class="club-av md" style="background:var(--coral)"><Icon name="shield" style="color:#fff;--icon-accent:#E98B74" /></span>
+          <span class="grow"><b>{{ t('審批後台') }}</b><br /><span class="muted small">{{ t('社團管理部 · {n} 件申請待處理', { n: pendingCount }) }}</span></span>
+          <Icon name="go" class="go" :size="18" />
+        </router-link>
+        <h2 class="sec-t">{{ t('我的活動') }}</h2>
+      </template>
       <div class="seg" role="tablist" :aria-label="t('我的活動')">
         <button type="button" role="tab" :aria-selected="tab === 'reg'" @click="tab = 'reg'">{{ t('我報名的 {n}', { n: upcoming.length }) }}</button>
         <button type="button" role="tab" :aria-selected="tab === 'fol'" @click="tab = 'fol'">{{ t('關注的社團 {n}', { n: clubs.length }) }}</button>

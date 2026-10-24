@@ -2,17 +2,15 @@
 import { locale, setLocale, t } from '../i18n'
 import { computed, ref, onMounted } from 'vue'
 import { supabase } from '../supabase'
-import { auth, signOut, loadClubRoles } from '../auth'
+import { auth, signOut } from '../auth'
 import { accountUrl } from '../fdfz'
 import { ROLE_LABEL } from '../constants'
 import { md, errorText } from '../format'
 import { toast } from '../toast'
 import Icon from '../components/Icon.vue'
-import ClubAvatar from '../components/ClubAvatar.vue'
 
 const profile = computed(() => auth.profile ?? {})
 const apps = ref([])
-const pendingCount = ref(0)
 
 async function loadApps() {
   const { data } = await supabase.from('club_applications')
@@ -22,11 +20,7 @@ async function loadApps() {
 }
 
 onMounted(async () => {
-  await Promise.all([loadApps(), loadClubRoles()])
-  if (auth.club.isStaff) {
-    const { count } = await supabase.from('club_applications').select('id', { count: 'exact', head: true }).eq('status', 'pending')
-    pendingCount.value = count ?? 0
-  }
+  await loadApps()
 })
 
 async function withdraw(a) {
@@ -57,20 +51,6 @@ async function logout() {
         </div>
       </div>
 
-      <template v-if="auth.club.clubs.length || auth.club.isStaff">
-        <h2 class="sec-t">{{ t('我管理的') }}</h2>
-        <router-link v-for="c in auth.club.clubs" :key="c.club_id" class="card entry" :to="`/manage/${c.club_id}`">
-          <ClubAvatar :club="{ id: c.club_id, name: c.name, avatar_url: c.avatar_url }" size="md" />
-          <span class="grow"><b>{{ t('{name}後台', { name: c.name }) }}</b><br />
-            <span class="muted small">{{ t('你是{role}', { role: t(ROLE_LABEL[c.role]) }) }} · {{ c.active ? t('發活動、看報名名單') : t('社團已停用，活動不會公開') }}</span></span>
-          <Icon name="go" class="go" :size="18" />
-        </router-link>
-        <router-link v-if="auth.club.isStaff" class="card entry" to="/review">
-          <span class="club-av md" style="background:var(--coral)"><Icon name="shield" style="color:#fff;--icon-accent:#E98B74" /></span>
-          <span class="grow"><b>{{ t('審批後台') }}</b><br /><span class="muted small">{{ t('社團管理部 · {n} 件申請待處理', { n: pendingCount }) }}</span></span>
-          <Icon name="go" class="go" :size="18" />
-        </router-link>
-      </template>
 
       <router-link class="card entry" to="/apply">
         <span class="club-av md" style="background:var(--sun)"><Icon name="flag" style="color:#fff" /></span>

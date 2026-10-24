@@ -41,7 +41,7 @@ router.beforeEach(async (to) => {
     window.location.assign(accountUrl(fix, location.origin + to.fullPath))
     return false
   }
-  if (to.meta.officer && !isOfficer(to.params.club)) return '/account'
-  if (to.meta.staff && !isStaff()) return '/account'
+  if (to.meta.officer && !isOfficer(to.params.club)) return '/mine'
+  if (to.meta.staff && !isStaff()) return '/mine'
   return true
 })

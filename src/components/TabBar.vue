@@ -35,10 +35,10 @@ const login = () => goLogin()
     <router-link to="/" :aria-current="current('/', '/e/')"><Icon name="cal" :size="24" />{{ t('活動') }}</router-link>
     <router-link to="/clubs" :aria-current="current('/clubs', '/c/')"><Icon name="grid" :size="24" />{{ t('社團') }}</router-link>
     <template v-if="auth.session">
-      <router-link to="/mine" :aria-current="current('/mine')">
+      <router-link to="/mine" :aria-current="current('/mine', '/manage', '/review')">
         <Icon name="ticket" :size="24" />{{ t('我的') }}<span v-if="upcoming" class="badge">{{ upcoming }}</span>
       </router-link>
-      <router-link to="/account" :aria-current="current('/account', '/manage', '/review')"><Icon name="user" :size="24" />{{ t('帳號') }}</router-link>
+      <router-link to="/account" :aria-current="current('/account', '/apply')"><Icon name="user" :size="24" />{{ t('帳號') }}</router-link>
     </template>
     <template v-else>
       <button type="button" class="tb-login btn small" style="margin-left:8px" @click="login">{{ t('用校園帳號登入') }}</button>

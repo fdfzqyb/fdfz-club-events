@@ -3,30 +3,42 @@ import { t } from './i18n'
 const pad = (n) => String(n).padStart(2, '0')
 const WEEKDAYS = ['週日', '週一', '週二', '週三', '週四', '週五', '週六']
 
-const dayStart = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
-const daysFrom = (a, b) => Math.round((dayStart(b) - dayStart(a)) / 86400000)
+// 全站固定用台北時間（UTC+8，沒有夏令時間），不看裝置的時區設定。
+// 做法：把時間往後挪 8 小時，再用 getUTC* 讀，讀到的就是台北的年月日時分。
+const OFFSET = 8 * 3600000
+const tp = (value) => {
+  const d = new Date(new Date(value).getTime() + OFFSET)
+  return { y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate(), h: d.getUTCHours(), mi: d.getUTCMinutes(), wd: d.getUTCDay() }
+}
+// 台北某天某時（'2026-10-28'、'12:40'）對應的時間點
+export const taipei = (date, time = '00:00') => new Date(`${date}T${time}:00+08:00`)
 
+const dayIndex = (value) => Math.floor((new Date(value).getTime() + OFFSET) / 86400000)
+const daysFrom = (a, b) => dayIndex(b) - dayIndex(a)
+const dayStart = (value) => new Date(dayIndex(value) * 86400000 - OFFSET)
+
+export const dayOfMonth = (value) => tp(value).d
+export const monthOf = (value) => tp(value).m
 export const hm = (value) => {
-  const d = new Date(value)
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`
+  const d = tp(value)
+  return `${pad(d.h)}:${pad(d.mi)}`
 }
-export const weekday = (value) => t(WEEKDAYS[new Date(value).getDay()])
+export const weekday = (value) => t(WEEKDAYS[tp(value).wd])
 export const md = (value) => {
-  const d = new Date(value)
-  const base = t('{m}月{d}日', { m: d.getMonth() + 1, d: d.getDate() })
-  return d.getFullYear() === new Date().getFullYear() ? base : t('{y}年', { y: d.getFullYear() }) + base
+  const d = tp(value)
+  const base = t('{m}月{d}日', { m: d.m, d: d.d })
+  return d.y === tp(new Date()).y ? base : t('{y}年', { y: d.y }) + base
 }
+
+// 今天 00:00（台北）
+export const todayStart = () => dayStart(new Date())
 
 // 這週一 00:00（活動牆的「本週」從週一算到週日）
 export function weekStart(now = new Date()) {
-  const d = dayStart(now)
-  d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
-  return d
+  return new Date(dayStart(now).getTime() - ((tp(now).wd + 6) % 7) * 86400000)
 }
 export function weekEnd(now = new Date()) {
-  const d = weekStart(now)
-  d.setDate(d.getDate() + 7)
-  return d
+  return new Date(weekStart(now).getTime() + 7 * 86400000)
 }
 
 // 日期徽章上面那行：今天、明天、週五
@@ -52,20 +64,19 @@ export const dayText = (value) => `${md(value)} ${weekday(value)}`
 
 // 10/20 21:14
 export function shortStamp(value) {
-  const d = new Date(value)
-  return `${d.getMonth() + 1}/${d.getDate()} ${hm(d)}`
+  const d = tp(value)
+  return `${d.m}/${d.d} ${hm(value)}`
 }
 
 export function fullStamp(value) {
   if (!value) return ''
-  const d = new Date(value)
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${hm(d)}`
+  return `${dateInput(value)} ${hm(value)}`
 }
 
 // <input type="date"> 和 <input type="time"> 用的值
 export const dateInput = (value) => {
-  const d = new Date(value)
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+  const d = tp(value)
+  return `${d.y}-${pad(d.m)}-${pad(d.d)}`
 }
 export const localInput = (value) => (value ? `${dateInput(value)}T${hm(value)}` : '')
 

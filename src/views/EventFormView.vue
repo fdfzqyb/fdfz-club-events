@@ -4,7 +4,7 @@ import { computed, reactive, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { supabase } from '../supabase'
 import { EVENT_KINDS } from '../constants'
-import { dateInput, hm, localInput, errorText } from '../format'
+import { dateInput, hm, localInput, taipei, errorText } from '../format'
 import { uploadImage } from '../upload'
 import Icon from '../components/Icon.vue'
 
@@ -77,8 +77,8 @@ async function save() {
   if (!f.title.trim()) return (error.value = t('請填活動名稱'))
   if (!f.date || !f.start) return (error.value = t('請填日期和開始時間'))
   if (!f.location.trim()) return (error.value = t('請填地點'))
-  const starts = new Date(`${f.date}T${f.start}`)
-  const ends = f.end ? new Date(`${f.date}T${f.end}`) : null
+  const starts = taipei(f.date, f.start)
+  const ends = f.end ? taipei(f.date, f.end) : null
   if (ends && ends <= starts) return (error.value = t('結束時間要晚於開始時間'))
   busy.value = true
   const { data, error: err } = await supabase.rpc('club_save_event', {
@@ -93,7 +93,7 @@ async function save() {
       poster_url: f.poster_url,
       description: f.description.trim(),
       capacity: f.capacity === '' ? '' : String(f.capacity),
-      reg_deadline: f.deadline ? new Date(f.deadline).toISOString() : '',
+      reg_deadline: f.deadline ? taipei(...f.deadline.split('T')).toISOString() : '',
       questions: f.questions.map((q) => q.trim()).filter(Boolean),
     },
   })

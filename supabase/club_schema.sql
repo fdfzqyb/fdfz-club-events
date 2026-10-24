@@ -164,12 +164,12 @@ $$;
 create function club_semester_start() returns timestamptz
 language sql stable as $$
   select (case
-    when extract(month from now() at time zone 'Asia/Shanghai') >= 8
-      then make_date(extract(year from now() at time zone 'Asia/Shanghai')::int, 8, 1)
-    when extract(month from now() at time zone 'Asia/Shanghai') >= 2
-      then make_date(extract(year from now() at time zone 'Asia/Shanghai')::int, 2, 1)
-    else make_date(extract(year from now() at time zone 'Asia/Shanghai')::int - 1, 8, 1)
-  end)::timestamp at time zone 'Asia/Shanghai';
+    when extract(month from now() at time zone 'Asia/Taipei') >= 8
+      then make_date(extract(year from now() at time zone 'Asia/Taipei')::int, 8, 1)
+    when extract(month from now() at time zone 'Asia/Taipei') >= 2
+      then make_date(extract(year from now() at time zone 'Asia/Taipei')::int, 2, 1)
+    else make_date(extract(year from now() at time zone 'Asia/Taipei')::int - 1, 8, 1)
+  end)::timestamp at time zone 'Asia/Taipei';
 $$;
 
 alter table club_staff         enable row level security;

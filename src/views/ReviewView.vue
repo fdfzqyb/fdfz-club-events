@@ -4,7 +4,7 @@ import { computed, ref, onMounted } from 'vue'
 import { supabase } from '../supabase'
 import { auth } from '../auth'
 import { ROLE_LABEL, GRADE_LABEL, GENDER_LABEL } from '../constants'
-import { md, fullStamp, downloadCsv, errorText } from '../format'
+import { md, fullStamp, dateInput, downloadCsv, errorText } from '../format'
 import { toast } from '../toast'
 import Icon from '../components/Icon.vue'
 import Modal from '../components/Modal.vue'
@@ -105,8 +105,7 @@ function exportApps(list, label) {
     yesNo(a.advisor_agrees, '同意', '不同意'), yesNo(a.head_teacher_agrees, '同意', '不同意'), yesNo(a.disciplined, '是', '否'),
     a.reviewer_name ?? '', fullStamp(a.reviewed_at), a.reject_reason ?? '',
   ])
-  const d = new Date()
-  downloadCsv(`${t('社團幹部申請')}-${label}-${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}.csv`, header, rows)
+  downloadCsv(`${t('社團幹部申請')}-${label}-${dateInput(new Date()).replace(/-/g, '')}.csv`, header, rows)
 }
 
 // 社團

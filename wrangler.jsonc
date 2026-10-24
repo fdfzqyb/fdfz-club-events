@@ -1,6 +1,6 @@
 // Cloudflare Workers 部署設定：把 npm run build 產生的 dist 當成靜態網站
 {
-  "name": "fdfz-club",
+  "name": "fdfz-club-events",
   "compatibility_date": "2026-10-01",
   "assets": {
     "directory": "./dist",

@@ -15,7 +15,7 @@
    insert into club_staff (user_id) select id from profiles where student_id = '學號' and verify_status = 'approved';
    ```
 3. **社團名單**：在 SQL Editor 整份貼上 [`supabase/club_seed.sql`](supabase/club_seed.sql) 按 Run，預先建好 64 個社團（名稱照「社团课教室安排2.xlsx」的「社团名称」原文）。重複執行不會重複建立；之後名單有新社團，在檔案裡加一行再執行即可。
-4. **Cloudflare**：Workers & Pages → 建立 → 連接 GitHub，選這個倉庫。Build command `npm run build`，Deploy command `npx wrangler deploy`，Worker 名稱 `fdfz-club`（要和 [`wrangler.jsonc`](wrangler.jsonc) 一致）。部署完到 Worker → Settings → Domains & Routes → Add → Custom domain，填 `club.fdfz.click`。之後每次推到 `main` 都會自動重新部署。
+4. **Cloudflare**：Workers & Pages → 建立 → 連接 GitHub，選這個倉庫。Build command `npm run build`，Deploy command `npx wrangler deploy`，Worker 名稱 `fdfz-club-events`（要和 [`wrangler.jsonc`](wrangler.jsonc) 一致）。部署完到 Worker → Settings → Domains & Routes → Add → Custom domain，填 `club.fdfz.click`。之後每次推到 `main` 都會自動重新部署。
 5. **Supabase → Authentication → URL Configuration → Redirect URLs** 加上 `https://club.fdfz.click/**`（Site URL 不要改）。
 6. 上線後，在帳號中心 fdfz-click-account 的 `src/constants.js` 的 `SITES` 加一行社團活動，「我的帳號」才會出現入口。
 

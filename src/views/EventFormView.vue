@@ -40,12 +40,21 @@ onMounted(async () => {
       location: ev.location, kind: ev.kind ?? '', poster_url: ev.poster_url ?? '', description: ev.description,
       capacity: ev.capacity ?? '', deadline: localInput(ev.reg_deadline), questions: [...ev.questions],
     })
+    customStart.value = !START_PRESETS.includes(f.start)
     const { count } = await supabase.from('club_registrations').select('user_id', { count: 'exact', head: true })
       .eq('event_id', eventId).neq('status', 'cancelled')
     regCount.value = count ?? 0
   }
   loading.value = false
 })
+
+// 開始時間常用的兩個時段（午休社團活動），其他時間選「自定義」
+const START_PRESETS = ['11:40', '12:40']
+const customStart = ref(false)
+function pickStart(v) {
+  f.start = v
+  customStart.value = false
+}
 
 const questionsLocked = computed(() => eventId && regCount.value > 0)
 
@@ -105,11 +114,16 @@ async function save() {
       <div class="row page-title"><h1 style="font-size:26px">{{ club?.name }} · {{ eventId ? t('修改活動') : t('發活動') }}</h1></div>
       <div class="card">
         <label class="field"><span>{{ t('活動名稱') }}<span class="req">*</span></span><input v-model="f.title" type="text" maxlength="60" /></label>
-        <div class="grid2">
-          <label class="field"><span>{{ t('日期') }}<span class="req">*</span></span><input v-model="f.date" type="date" /></label>
-          <label class="field"><span>{{ t('開始時間') }}<span class="req">*</span></span><input v-model="f.start" type="time" /></label>
+        <label class="field"><span>{{ t('日期') }}<span class="req">*</span></span><input v-model="f.date" type="date" /></label>
+        <div>
+          <span id="start-l" class="field-t">{{ t('開始時間') }}<span class="req">*</span></span>
+          <div class="chips" role="group" aria-labelledby="start-l">
+            <button v-for="v in START_PRESETS" :key="v" type="button" class="chip" :aria-pressed="!customStart && f.start === v" @click="pickStart(v)">{{ v }}</button>
+            <button type="button" class="chip" :aria-pressed="customStart" @click="customStart = true">{{ t('自定義') }}</button>
+          </div>
+          <input v-if="customStart" v-model="f.start" type="time" aria-labelledby="start-l" style="margin-top:8px" />
         </div>
-        <label class="field"><span>{{ t('結束時間') }}</span><input v-model="f.end" type="time" /><small>{{ t('選填。沒填的話行事曆會預設一小時。') }}</small></label>
+        <label class="field"><span>{{ t('結束時間') }}</span><input v-model="f.end" type="time" /><small>{{ t('選填。沒填的話行事曆會預設 40 分鐘。') }}</small></label>
         <label class="field"><span>{{ t('地點') }}<span class="req">*</span></span><input v-model="f.location" type="text" maxlength="100" />
           <small>{{ t('寫得讓第一次來的人找得到，例如「實驗樓 1 樓，進門左轉」。') }}</small></label>
         <div>

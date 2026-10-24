@@ -5,7 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { supabase } from '../supabase'
 import { isOfficer } from '../auth'
 import { CATEGORY_LABEL, ROLE_LABEL, clubColor } from '../constants'
-import { dayText, hm } from '../format'
+import { dayText, hm, dayOfMonth, monthOf } from '../format'
 import Icon from '../components/Icon.vue'
 import Poster from '../components/Poster.vue'
 import ClubAvatar from '../components/ClubAvatar.vue'
@@ -116,7 +116,7 @@ const back = () => (window.history.state?.back ? router.back() : router.push('/c
               <h3>{{ t('過去的活動') }}</h3>
               <div>
                 <router-link v-for="e in past" :key="e.id" class="past" :to="`/e/${e.id}`">
-                  <span class="d"><b>{{ new Date(e.starts_at).getDate() }}</b><span class="tiny">{{ t('{m}月', { m: new Date(e.starts_at).getMonth() + 1 }) }}</span></span>
+                  <span class="d"><b>{{ dayOfMonth(e.starts_at) }}</b><span class="tiny">{{ t('{m}月', { m: monthOf(e.starts_at) }) }}</span></span>
                   <span class="grow"><b>{{ e.title }}</b><br />
                     <span class="muted small">{{ e.location }} · {{ e.status === 'cancelled' ? t('已取消') : t('{n} 人報名', { n: e.going_count }) }}</span>
                   </span>

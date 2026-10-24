@@ -4,7 +4,7 @@ import { computed, ref, onMounted } from 'vue'
 import { supabase } from '../supabase'
 import { auth, loadClubRoles } from '../auth'
 import { ROLE_LABEL } from '../constants'
-import { badgeDay, timeRange, md, hm } from '../format'
+import { badgeDay, timeRange, md, hm, dayOfMonth, monthOf } from '../format'
 import Icon from '../components/Icon.vue'
 import ClubAvatar from '../components/ClubAvatar.vue'
 import ClubRow from '../components/ClubRow.vue'
@@ -73,7 +73,7 @@ function changed(e) {
       <div v-else-if="tab === 'reg'" class="vstack">
         <p v-if="!upcoming.length" class="empty">{{ t('還沒有報名活動。') }}<router-link to="/">{{ t('去活動牆看看') }}</router-link></p>
         <router-link v-for="e in upcoming" :key="e.id" class="card ev" :to="`/e/${e.id}`" style="flex-direction:row;align-items:center;gap:14px">
-          <div class="date-badge" style="position:static;box-shadow:none;background:var(--peach)"><small>{{ badgeDay(e.starts_at) }}</small><b>{{ new Date(e.starts_at).getDate() }}</b></div>
+          <div class="date-badge" style="position:static;box-shadow:none;background:var(--peach)"><small>{{ badgeDay(e.starts_at) }}</small><b>{{ dayOfMonth(e.starts_at) }}</b></div>
           <div class="ev-body" style="padding:0;flex:1;min-width:0">
             <div class="ev-club"><ClubAvatar :club="{ id: e.club_id, name: e.club_name, avatar_url: e.club_avatar }" />{{ e.club_name }}</div>
             <h3>{{ e.title }}</h3>
@@ -89,7 +89,7 @@ function changed(e) {
           <h2 class="sec-t">{{ t('去過的') }}</h2>
           <div class="card">
             <router-link v-for="e in past" :key="e.id" class="past" :to="`/e/${e.id}`">
-              <span class="d"><b>{{ new Date(e.starts_at).getDate() }}</b><span class="tiny">{{ t('{m}月', { m: new Date(e.starts_at).getMonth() + 1 }) }}</span></span>
+              <span class="d"><b>{{ dayOfMonth(e.starts_at) }}</b><span class="tiny">{{ t('{m}月', { m: monthOf(e.starts_at) }) }}</span></span>
               <span class="grow"><b>{{ e.title }}</b><br /><span class="muted small">{{ e.club_name }}</span></span>
             </router-link>
           </div>

@@ -4,7 +4,7 @@ import { computed, ref, onMounted } from 'vue'
 import { supabase } from '../supabase'
 import { auth, canAct, goLogin } from '../auth'
 import { EVENT_KINDS } from '../constants'
-import { md, weekStart, weekEnd, errorText } from '../format'
+import { md, weekStart, weekEnd, todayStart, taipei, dayOfMonth, monthOf, errorText } from '../format'
 import Icon from '../components/Icon.vue'
 import Logo from '../components/Logo.vue'
 import EventCard from '../components/EventCard.vue'
@@ -22,8 +22,7 @@ const from = ref('')
 
 onMounted(async () => {
   // 從今天 0 點起、沒取消的活動
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  const today = todayStart()
   const [ev, cl, fo] = await Promise.all([
     supabase.from('club_event_feed').select('*').eq('status', 'scheduled')
       .gte('starts_at', today.toISOString()).order('starts_at').limit(300),
@@ -44,14 +43,14 @@ const shown = computed(() => events.value.filter((e) => {
   if (range.value === 'follow' && !follows.value.has(e.club_id)) return false
   if (kind.value && e.kind !== kind.value) return false
   if (club.value && e.club_id !== Number(club.value)) return false
-  if (from.value && s < new Date(from.value + 'T00:00')) return false
+  if (from.value && s < taipei(from.value)) return false
   return true
 }))
 const thisWeek = computed(() => shown.value.filter((e) => new Date(e.starts_at) < end))
 const later = computed(() => shown.value.filter((e) => new Date(e.starts_at) >= end))
 const weekLabel = computed(() => {
   const last = new Date(end.getTime() - 86400000)
-  return t('{a}到{b}', { a: md(weekStart()), b: last.getMonth() === weekStart().getMonth() ? t('{d}日', { d: last.getDate() }) : md(last) })
+  return t('{a}到{b}', { a: md(weekStart()), b: monthOf(last) === monthOf(weekStart()) ? t('{d}日', { d: dayOfMonth(last) }) : md(last) })
 })
 
 function pickRange(r) {

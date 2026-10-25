@@ -28,26 +28,28 @@ const club = ref('')
 const from = ref('')
 
 onMounted(async () => {
-  // 從今天 0 點起、沒取消的活動
-  // 週邊分頁只列販售中、缺貨的
+  // 從今天 0 點起、沒取消的活動；販售中、缺貨的週邊（「週邊」和「我關注的」用）
   const today = todayStart()
-  const [ev, cl, fo] = await Promise.all([
-    range.value === 'merch'
+  const [ev, me, cl, fo] = await Promise.all([
+    range.value === 'merch' ? { data: [] } : supabase.from('club_event_feed').select('*').eq('status', 'scheduled')
+      .gte('starts_at', today.toISOString()).order('starts_at').limit(300),
+    range.value === 'merch' || canAct()
       ? supabase.from('club_merch_feed').select('*').neq('status', 'off').order('listed_at', { ascending: false }).limit(300)
-      : supabase.from('club_event_feed').select('*').eq('status', 'scheduled')
-        .gte('starts_at', today.toISOString()).order('starts_at').limit(300),
+      : { data: [] },
     supabase.from('club_club_feed').select('id, name').order('name'),
     canAct() ? supabase.from('club_follows').select('club_id').eq('user_id', auth.session.user.id) : { data: [] },
   ])
   loading.value = false
-  if (ev.error) return (error.value = errorText(ev.error))
-  if (range.value === 'merch') merch.value = ev.data
-  else events.value = ev.data
+  if (ev.error || me.error) return (error.value = errorText(ev.error ?? me.error))
+  events.value = ev.data
+  merch.value = me.data ?? []
   clubs.value = cl.data ?? []
   follows.value = new Set((fo.data ?? []).map((f) => f.club_id))
 })
 
 const merchShown = computed(() => merch.value.filter((m) => !club.value || m.club_id === Number(club.value)))
+// 「我關注的」也列關注社團的週邊
+const followMerch = computed(() => merchShown.value.filter((m) => follows.value.has(m.club_id)))
 
 const end = weekEnd()
 const shown = computed(() => events.value.filter((e) => {
@@ -91,8 +93,8 @@ function pickRange(r) {
         <div class="seg" role="tablist" :aria-label="t('活動範圍')">
           <button type="button" role="tab" :aria-selected="range === 'all'" @click="pickRange('all')">{{ t('全部') }}</button>
           <button type="button" role="tab" :aria-selected="range === 'week'" @click="pickRange('week')">{{ t('本週') }}</button>
-          <button type="button" role="tab" :aria-selected="range === 'follow'" :style="canAct() ? '' : 'opacity:.45'" @click="pickRange('follow')"><Icon name="bell" :size="16" />{{ t('我關注的') }}</button>
           <button type="button" role="tab" :aria-selected="range === 'merch'" @click="pickRange('merch')">{{ t('週邊') }}</button>
+          <button type="button" role="tab" :aria-selected="range === 'follow'" :style="canAct() ? '' : 'opacity:.45'" @click="pickRange('follow')"><Icon name="bell" :size="16" />{{ t('我關注的') }}</button>
         </div>
         <div v-if="range !== 'merch'" class="chips scroll" role="group" :aria-label="t('活動類型')">
           <button type="button" class="chip" :aria-pressed="!kind" @click="kind = ''">{{ t('全部類型') }}</button>
@@ -125,6 +127,10 @@ function pickRange(r) {
           <div class="ev-grid"><EventCard v-for="e in later" :key="e.id" :ev="e" /></div>
         </template>
         <p v-if="!thisWeek.length && (!later.length || range === 'week')" class="empty">{{ t('沒有符合條件的活動') }}</p>
+        <template v-if="range === 'follow' && followMerch.length">
+          <div class="row"><h2 class="sec-t">{{ t('關注社團的週邊') }}</h2><span class="muted tiny">{{ t('{n} 件', { n: followMerch.length }) }}</span></div>
+          <div class="ev-grid merch-grid"><MerchCard v-for="m in followMerch" :key="m.id" :m="m" /></div>
+        </template>
         <div v-if="range === 'follow'" class="note"><Icon name="bell" :size="20" />
           <span>{{ t('這裡只列你關注的 {n} 個社團。想看更多，到', { n: follows.size }) }}<router-link to="/clubs">{{ t('社團列表') }}</router-link>{{ t('關注其他社團。') }}</span>
         </div>

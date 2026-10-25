@@ -3,7 +3,7 @@ import { supabase } from './supabase'
 const MAX = 20 * 1024 * 1024
 const TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
 // 上傳前在瀏覽器壓縮，省 Supabase 的空間和流量。海報最長邊 1080 像素，約 30 行字還看得清楚
-const LONG_EDGE = { poster: 1080, cover: 1080, avatar: 320 }
+const LONG_EDGE = { poster: 1080, cover: 1080, merch: 1080, avatar: 320 }
 
 // 縮小並轉成 WebP（瀏覽器不支援 WebP 編碼時用 JPEG）。GIF 只留第一格
 async function compress(file, longEdge) {
@@ -21,7 +21,7 @@ async function compress(file, longEdge) {
   return blob
 }
 
-// 上傳海報、頭像、封面到 club-media（公開），路徑第一段是社團 id，資料庫只允許該社團幹部上傳。回傳公開網址
+// 上傳海報、頭像、封面、週邊圖片到 club-media（公開），路徑第一段是社團 id，資料庫只允許該社團幹部上傳。回傳公開網址
 export async function uploadImage(clubId, file, kind) {
   if (!TYPES.includes(file.type)) throw new Error('只能上傳 JPG、PNG、WebP 或 GIF 圖片')
   if (file.size > MAX) throw new Error('圖片請在 20 MB 以內')

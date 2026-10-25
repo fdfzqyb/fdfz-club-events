@@ -32,7 +32,7 @@ const login = () => goLogin()
 <template>
   <nav class="tabbar" :aria-label="t('主選單')">
     <router-link class="tb-brand" to="/"><Logo />{{ t('FDFZ 社團活動') }}</router-link>
-    <router-link to="/" :aria-current="current('/', '/e/')"><Icon name="cal" :size="24" />{{ t('活動') }}</router-link>
+    <router-link to="/" :aria-current="current('/', '/e/', '/m/')"><Icon name="cal" :size="24" />{{ t('活動') }}</router-link>
     <router-link to="/clubs" :aria-current="current('/clubs', '/c/')"><Icon name="grid" :size="24" />{{ t('社團') }}</router-link>
     <template v-if="auth.session">
       <router-link to="/mine" :aria-current="current('/mine', '/manage', '/review')">

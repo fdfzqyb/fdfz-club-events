@@ -262,7 +262,7 @@ dialog h2{font-size:20px}
   .club-hero .inner{margin-top:-40px}
   .club-hero .inner .grow{flex:1;padding-top:50px}
   .filters{flex-direction:row!important;align-items:center;justify-content:space-between}
-  .filters .seg{width:360px}
+  .filters .seg{width:480px}
   .chips.scroll{margin:0;padding:0;flex-wrap:wrap}
 }
 .page-title{display:none;font-size:26px}
@@ -297,3 +297,18 @@ input[type=file]{font-size:14px}
 .select-row{display:flex;gap:8px;align-items:center}
 @media (min-width:960px){.toast{bottom:32px}}
 
+/* 週邊 */
+.merch-grid{display:grid;gap:12px;grid-template-columns:repeat(2,minmax(0,1fr))}
+.merch .poster,.ev.merch .poster{aspect-ratio:1/1}
+.merch .poster b{font-size:16px}
+.merch h3{font-size:15px}
+.merch .row{flex-wrap:wrap;gap:4px 8px}
+.price{font-family:"Huninn",sans-serif;font-weight:400;font-size:17px;color:var(--coral);overflow-wrap:anywhere}
+.merch-img{aspect-ratio:auto}
+.merch-img img{position:static;display:block;width:100%;height:auto}
+.merch-thumbs{display:grid;gap:10px;grid-template-columns:repeat(3,minmax(0,1fr))}
+.merch-thumbs .upload-preview img{aspect-ratio:1/1}
+@media (min-width:720px){.ev-grid.merch-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (min-width:960px){.ev-grid.merch-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.seg button{white-space:nowrap;padding:8px 6px}
+@media (max-width:420px){.seg .ic{display:none}}

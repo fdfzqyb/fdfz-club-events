@@ -62,6 +62,16 @@ export function whenText(start, end) {
 // 10月28日 週三
 export const dayText = (value) => `${md(value)} ${weekday(value)}`
 
+// n 個月後。月底的日子落到那個月的最後一天（和資料庫的 interval '1 month' 一樣）
+export function addMonths(value, n) {
+  const d = new Date(value)
+  const day = d.getUTCDate()
+  d.setUTCDate(1)
+  d.setUTCMonth(d.getUTCMonth() + n)
+  d.setUTCDate(Math.min(day, new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate()))
+  return d
+}
+
 // 10/20 21:14
 export function shortStamp(value) {
   const d = tp(value)

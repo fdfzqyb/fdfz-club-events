@@ -34,7 +34,7 @@ for f in sorted((root / 'src').rglob('*')):
             add(m.group(1))
 
 # 資料庫函數 raise 的訊息也會顯示給同學看
-for m in re.finditer(r"raise exception '([^']+)'", (root / 'supabase' / 'club_schema.sql').read_text(encoding='utf8')):
+for m in re.finditer(r"raise exception '([^']+)'", ''.join((root / 'supabase' / n).read_text(encoding='utf8') for n in ('club_schema.sql', 'club_merch.sql'))):
     add(m.group(1))
 
 existing = {}

@@ -14,6 +14,7 @@ const routes = [
   { path: '/pending', beforeEnter: toAccount('/pending'), component: {} },
   { path: '/', component: () => import('./views/WallView.vue') },
   { path: '/e/:id(\\d+)', component: () => import('./views/EventView.vue') },
+  { path: '/m/:id(\\d+)', component: () => import('./views/MerchView.vue') },
   { path: '/clubs', component: () => import('./views/ClubsView.vue') },
   { path: '/c/:id(\\d+)', component: () => import('./views/ClubView.vue') },
   { path: '/mine', component: () => import('./views/MineView.vue'), meta: { login: true } },
@@ -22,6 +23,8 @@ const routes = [
   { path: '/manage/:club(\\d+)', component: () => import('./views/ManageView.vue'), meta: { login: true, officer: true } },
   { path: '/manage/:club(\\d+)/new', component: () => import('./views/EventFormView.vue'), meta: { login: true, officer: true } },
   { path: '/manage/:club(\\d+)/edit/:id(\\d+)', component: () => import('./views/EventFormView.vue'), meta: { login: true, officer: true } },
+  { path: '/manage/:club(\\d+)/merch/new', component: () => import('./views/MerchFormView.vue'), meta: { login: true, officer: true } },
+  { path: '/manage/:club(\\d+)/merch/edit/:id(\\d+)', component: () => import('./views/MerchFormView.vue'), meta: { login: true, officer: true } },
   { path: '/review', component: () => import('./views/ReviewView.vue'), meta: { login: true, staff: true } },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]

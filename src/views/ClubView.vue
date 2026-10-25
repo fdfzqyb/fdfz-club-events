@@ -5,12 +5,13 @@ import { useRoute, useRouter } from 'vue-router'
 import { supabase } from '../supabase'
 import { isOfficer } from '../auth'
 import { CATEGORY_LABEL, ROLE_LABEL, clubColor } from '../constants'
-import { dayText, hm, dayOfMonth, monthOf } from '../format'
+import { dayText, hm, md, dayOfMonth, monthOf } from '../format'
 import Icon from '../components/Icon.vue'
 import Poster from '../components/Poster.vue'
 import ClubAvatar from '../components/ClubAvatar.vue'
 import FollowButton from '../components/FollowButton.vue'
 import RegStatus from '../components/RegStatus.vue'
+import MerchCard from '../components/MerchCard.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -19,21 +20,24 @@ const club = ref(null)
 const officers = ref([])
 const upcoming = ref([])
 const past = ref([])
+const merch = ref([])
 const loading = ref(true)
 
 onMounted(async () => {
   const now = new Date().toISOString()
-  const [c, o, up, pa] = await Promise.all([
+  const [c, o, up, pa, me] = await Promise.all([
     supabase.from('club_club_feed').select('*').eq('id', id).maybeSingle(),
     supabase.rpc('club_officers', { p_club: id }),
     supabase.from('club_event_feed').select('*').eq('club_id', id).gte('starts_at', now).order('starts_at'),
     supabase.from('club_event_feed').select('id, title, starts_at, location, going_count, status')
       .eq('club_id', id).lt('starts_at', now).order('starts_at', { ascending: false }).limit(20),
+    supabase.from('club_merch_feed').select('*').eq('club_id', id).order('listed_at', { ascending: false }).limit(40),
   ])
   club.value = c.data
   officers.value = o.data ?? []
   upcoming.value = up.data ?? []
   past.value = pa.data ?? []
+  merch.value = me.data ?? []
   loading.value = false
 })
 
@@ -47,6 +51,9 @@ const cover = computed(() => {
   const c = clubColor(id)
   return `linear-gradient(150deg, ${c}, color-mix(in srgb, ${c} 60%, #fff))`
 })
+// 販售中、缺貨的放「本社週邊」；下架的只留文字，放「過往週邊」
+const merchNow = computed(() => merch.value.filter((m) => m.status !== 'off'))
+const merchPast = computed(() => merch.value.filter((m) => m.status === 'off'))
 const back = () => (window.history.state?.back ? router.back() : router.push('/clubs'))
 </script>
 
@@ -112,6 +119,10 @@ const back = () => (window.history.state?.back ? router.back() : router.push('/c
                 <RegStatus :ev="e" />
               </div>
             </router-link>
+            <template v-if="merchNow.length">
+              <h2 class="sec-t">{{ t('本社週邊') }}</h2>
+              <div class="merch-grid"><MerchCard v-for="m in merchNow" :key="m.id" :m="m" hide-club /></div>
+            </template>
             <div v-if="past.length" class="card">
               <h3>{{ t('過去的活動') }}</h3>
               <div>
@@ -119,6 +130,16 @@ const back = () => (window.history.state?.back ? router.back() : router.push('/c
                   <span class="d"><b>{{ dayOfMonth(e.starts_at) }}</b><span class="tiny">{{ t('{m}月', { m: monthOf(e.starts_at) }) }}</span></span>
                   <span class="grow"><b>{{ e.title }}</b><br />
                     <span class="muted small">{{ e.location }} · {{ e.status === 'cancelled' ? t('已取消') : t('{n} 人報名', { n: e.going_count }) }}</span>
+                  </span>
+                </router-link>
+              </div>
+            </div>
+            <div v-if="merchPast.length" class="card">
+              <h3>{{ t('過往週邊') }}</h3>
+              <div>
+                <router-link v-for="m in merchPast" :key="m.id" class="past" :to="`/m/${m.id}`">
+                  <span class="grow"><b>{{ m.name }}</b><br />
+                    <span class="muted small">{{ m.price }} · {{ t('{d}下架', { d: md(m.taken_down_at) }) }}</span>
                   </span>
                 </router-link>
               </div>

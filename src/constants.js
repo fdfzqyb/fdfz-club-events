@@ -19,6 +19,13 @@ export const CLUB_CATEGORIES = [
 ]
 export const CATEGORY_LABEL = Object.fromEntries(CLUB_CATEGORIES.map((x) => [x.key, x.label]))
 
+// 週邊狀態，鍵名和資料庫的 club_merch_status 一致
+export const MERCH_STATUS = {
+  on_sale: ['販售中', 'st-open'],
+  sold_out: ['缺貨', 'st-wait'],
+  off: ['已下架', 'st-full'],
+}
+
 export const ROLE_LABEL = { president: '社長', vice_president: '副社長' }
 
 // 申請表「成績等第」：每 5% 一檔，共 20 檔；資料庫存 1～20

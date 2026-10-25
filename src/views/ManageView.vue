@@ -4,7 +4,7 @@ import { computed, reactive, ref, onMounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { supabase } from '../supabase'
 import { auth } from '../auth'
-import { CLUB_CATEGORIES, ROLE_LABEL } from '../constants'
+import { CLUB_CATEGORIES, MERCH_STATUS, ROLE_LABEL } from '../constants'
 import { dayText, hm, md, shortStamp, fullStamp, downloadCsv, errorText } from '../format'
 import { uploadImage } from '../upload'
 import { toast } from '../toast'
@@ -35,12 +35,20 @@ async function loadEvents() {
   }))
 }
 
+// 週邊：過了下架時間但定時任務還沒跑到的，也當作已下架
+const merch = ref([])
+async function loadMerch() {
+  const { data } = await supabase.from('club_merch').select('*').eq('club_id', clubId).order('listed_at', { ascending: false }).limit(60)
+  merch.value = (data ?? []).map((m) => ({ ...m, state: m.status === 'off' || new Date(m.off_at).getTime() <= Date.now() ? 'off' : m.status }))
+}
+
 onMounted(async () => {
   const [c, o, fc] = await Promise.all([
     supabase.from('club_clubs').select('*').eq('id', clubId).maybeSingle(),
     supabase.rpc('club_officers', { p_club: clubId }),
     supabase.from('club_club_feed').select('follower_count').eq('id', clubId).maybeSingle(),
     loadEvents(),
+    loadMerch(),
   ])
   club.value = c.data
   officers.value = o.data ?? []
@@ -110,6 +118,24 @@ async function confirmCancel() {
   cancelling.value = null
   toast('活動已取消')
   await loadEvents()
+}
+
+// 週邊：缺貨、恢復販售直接改；下架、刪除要先確認（圖片會刪掉）
+async function setMerch(m, status) {
+  const { error } = await supabase.rpc('club_set_merch_status', { p_id: m.id, p_status: status })
+  if (error) return toast(errorText(error))
+  toast(status === 'sold_out' ? '已標成缺貨' : status === 'on_sale' ? '已恢復販售' : '已下架')
+  await loadMerch()
+}
+const merchAsk = ref(null) // { m, action: 'off' | 'delete' }
+async function confirmMerch() {
+  const { m, action } = merchAsk.value
+  merchAsk.value = null
+  if (action === 'off') return setMerch(m, 'off')
+  const { error } = await supabase.rpc('club_delete_merch', { p_id: m.id })
+  if (error) return toast(errorText(error))
+  toast('已刪除')
+  await loadMerch()
 }
 
 // 社團介紹
@@ -201,6 +227,29 @@ async function saveClub() {
               </table>
             </div>
           </div>
+
+          <div class="row"><h2 class="sec-t">{{ t('週邊') }}</h2>
+            <router-link class="btn plain small" :to="`/manage/${clubId}/merch/new`"><Icon name="plus" />{{ t('發週邊') }}</router-link></div>
+          <p v-if="!merch.length" class="muted small">{{ t('社團的 T 恤、徽章、明信片這類東西，可以發在這裡讓大家看到。網站只展示，付款和取貨在線下。') }}</p>
+          <div v-for="m in merch" :key="m.id" class="card" :style="{ gap: '10px', opacity: m.state === 'off' ? .75 : 1 }">
+            <div class="row">
+              <span><router-link :to="`/m/${m.id}`" style="color:inherit"><b>{{ m.name }}</b></router-link><br />
+                <span class="muted small">{{ m.price }} · {{ m.state === 'off' ? t('{d}下架', { d: md(m.taken_down_at ?? m.off_at) }) : t('{d}自動下架', { d: md(m.off_at) }) }}</span></span>
+              <span class="status" :class="MERCH_STATUS[m.state][1]">{{ t(MERCH_STATUS[m.state][0]) }}</span>
+            </div>
+            <div class="actions">
+              <template v-if="m.state === 'off'">
+                <router-link class="btn plain small" :to="`/manage/${clubId}/merch/edit/${m.id}`">{{ t('重新上架') }}</router-link>
+              </template>
+              <template v-else>
+                <router-link class="btn plain small" :to="`/manage/${clubId}/merch/edit/${m.id}`"><Icon name="edit" />{{ t('編輯') }}</router-link>
+                <button v-if="m.state === 'on_sale'" class="btn plain small" type="button" @click="setMerch(m, 'sold_out')">{{ t('標成缺貨') }}</button>
+                <button v-else class="btn plain small" type="button" @click="setMerch(m, 'on_sale')">{{ t('恢復販售') }}</button>
+                <button class="btn plain small" type="button" @click="merchAsk = { m, action: 'off' }">{{ t('下架') }}</button>
+              </template>
+              <button class="btn plain small" type="button" @click="merchAsk = { m, action: 'delete' }">{{ t('刪除') }}</button>
+            </div>
+          </div>
         </div>
 
         <div class="vstack">
@@ -241,6 +290,16 @@ async function saveClub() {
       <div class="actions" style="justify-content:flex-end">
         <button class="btn plain" type="button" @click="cancelling = null">{{ t('先不要') }}</button>
         <button class="btn" type="button" @click="confirmCancel">{{ t('確定取消活動') }}</button>
+      </div>
+    </Modal>
+
+    <Modal v-if="merchAsk" :open="!!merchAsk" :title="merchAsk.action === 'off' ? t('下架「{name}」？', { name: merchAsk.m.name }) : t('刪除「{name}」？', { name: merchAsk.m.name })" @update:open="(v) => !v && (merchAsk = null)">
+      <p class="small">{{ merchAsk.action === 'off'
+        ? t('下架後圖片會刪掉，名稱、價格和介紹留在社團頁的「過往週邊」。之後可以重新上架，但要重傳圖片。')
+        : t('刪除後社團頁不會留下紀錄，圖片也會刪掉，不能復原。只是不賣了的話，用「下架」就好。') }}</p>
+      <div class="actions" style="justify-content:flex-end">
+        <button class="btn plain" type="button" @click="merchAsk = null">{{ t('先不要') }}</button>
+        <button class="btn" type="button" @click="confirmMerch">{{ merchAsk.action === 'off' ? t('確定下架') : t('確定刪除') }}</button>
       </div>
     </Modal>
   </main>

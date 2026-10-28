@@ -98,10 +98,12 @@ export function errorText(error) {
   return '出了點問題，請稍後再試'
 }
 
-// 匯出 CSV：開頭加 BOM，Excel 打開中文才不會亂碼
+// 匯出 CSV：開頭加 BOM，Excel 打開中文才不會亂碼。
+// 同學填的內容如果以 = + - @ 開頭，Excel 會當成公式執行，前面加一個 ' 讓它保持文字
 export function downloadCsv(filename, header, rows) {
   const cell = (v) => {
-    const s = v == null ? '' : String(v)
+    let s = v == null ? '' : String(v)
+    if (/^[=+\-@\t\r]/.test(s)) s = "'" + s
     return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
   }
   const text = [header, ...rows].map((r) => r.map(cell).join(',')).join('\r\n')

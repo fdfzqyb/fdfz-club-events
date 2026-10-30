@@ -428,14 +428,17 @@ begin
   return p_id;
 end $$;
 
--- 取消活動；活動留在社團頁，標示為已取消並顯示原因
+-- 取消活動；活動留在社團頁，標示為已取消並顯示原因。
+-- 社團管理部也可以取消（例如社團已經沒有幹部，報名的人還在等）
 create function club_cancel_event(p_event bigint, p_reason text) returns void
 language plpgsql security definer set search_path = public as $$
 declare
   e club_events;
 begin
   select * into e from club_events where id = p_event for update;
-  if not found or not club_is_officer(e.club_id) then raise exception '只有這個社團的社長、副社長可以取消活動'; end if;
+  if not found or not (club_is_officer(e.club_id) or club_is_staff()) then
+    raise exception '只有這個社團的社長、副社長或社團管理部可以取消活動';
+  end if;
   if e.status = 'cancelled' then return; end if;
   if char_length(btrim(coalesce(p_reason, ''))) < 2 then raise exception '請填取消原因'; end if;
   update club_events set status = 'cancelled', cancel_reason = btrim(p_reason), updated_at = now() where id = p_event;
@@ -481,6 +484,7 @@ create function club_apply(p jsonb) returns bigint
 language plpgsql security definer set search_path = public as $$
 declare
   me profiles;
+  cur club_role;
   v_club bigint := nullif(p->>'club_id', '')::bigint;
   v_new text := nullif(btrim(coalesce(p->>'new_club_name', '')), '');
   v_phone text := btrim(coalesce(p->>'phone', ''));
@@ -495,9 +499,10 @@ begin
     v_new := null;
     -- 未開通的社團也能申請（名單預先建好，第一位幹部通過時開通）
     if not exists (select 1 from club_clubs where id = v_club) then raise exception '找不到這個社團'; end if;
-    if exists (select 1 from club_members where club_id = v_club and user_id = me.id and role::text = p->>'role') then
-      raise exception '你已經是這個社團的幹部';
-    end if;
+    -- 已經是幹部：同職位不用再申請；社長申請副社長會被降職，也擋掉。副社長申請社長可以
+    select role into cur from club_members where club_id = v_club and user_id = me.id;
+    if cur = 'president' then raise exception '你已經是這個社團的社長，不用再申請'; end if;
+    if cur::text = p->>'role' then raise exception '你已經是這個社團的副社長，不用再申請'; end if;
   else
     -- 名稱已經在社團名單裡，就直接申請那個社團
     select id into v_club from club_clubs where lower(name) = lower(v_new);
@@ -577,8 +582,9 @@ begin
     end if;
     update club_clubs set active = true where id = cid and not active;
     select name into cname from club_clubs where id = cid;
+    -- 已經是幹部的只會升職不會降職（社長 < 副社長，least 取較高的職位）
     insert into club_members (club_id, user_id, role) values (cid, a.user_id, a.role)
-    on conflict (club_id, user_id) do update set role = excluded.role;
+    on conflict (club_id, user_id) do update set role = least(club_members.role, excluded.role);
     update club_applications set status = 'approved', club_id = cid,
       reviewed_by = auth.uid(), reviewer_name = me_name, reviewed_at = now()
     where id = p_id;

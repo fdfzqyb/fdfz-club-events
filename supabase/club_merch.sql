@@ -98,16 +98,20 @@ begin
   select coalesce(array_agg(u), '{}') into v_images
   from jsonb_array_elements_text(coalesce(p->'images', '[]')) u where btrim(u) <> '';
   if cardinality(v_images) > 3 then raise exception '圖片最多 3 張'; end if;
-  -- 只收這個社團上傳到 club-media 的圖片（下架時才刪得掉，也不會刪到別的社團的檔案）
-  if exists (select 1 from unnest(v_images) u where coalesce(club_media_path(u), '') not like p_club || '/%') then
-    raise exception '圖片請用上傳的';
-  end if;
 
   if p_id is not null then
     select * into m from club_merch where id = p_id and club_id = p_club for update;
     if not found then raise exception '找不到這個週邊'; end if;
     relist := m.status = 'off' or m.off_at <= now();
     if not relist then v_listed := m.listed_at; end if;
+  end if;
+
+  -- 只收這個社團上傳到 club-media 的圖片（下架時才刪得掉，也不會刪到別的社團的檔案）。
+  -- 這件週邊原本就有的圖片照收：合併社團後，搬過來的週邊圖片還在原社團的資料夾裡
+  if exists (select 1 from unnest(v_images) u
+             where coalesce(club_media_path(u), '') not like p_club || '/%'
+               and not (u = any (coalesce(m.images, '{}')))) then
+    raise exception '圖片請用上傳的';
   end if;
 
   v_off := coalesce(v_off, v_listed + interval '2 months');

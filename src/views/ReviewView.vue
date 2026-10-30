@@ -4,7 +4,7 @@ import { computed, ref, onMounted } from 'vue'
 import { supabase } from '../supabase'
 import { auth } from '../auth'
 import { ROLE_LABEL, GRADE_LABEL, GENDER_LABEL } from '../constants'
-import { md, fullStamp, dateInput, downloadCsv, errorText } from '../format'
+import { md, hm, dayText, fullStamp, dateInput, downloadCsv, errorText } from '../format'
 import { toast } from '../toast'
 import Icon from '../components/Icon.vue'
 import Modal from '../components/Modal.vue'
@@ -114,10 +114,33 @@ const shownClubs = computed(() => clubs.value.filter((c) => c.name.toLowerCase()
 const managing = ref(null)
 const renameTo = ref('')
 const mergeInto = ref('')
+// 這個社團還沒開始的活動：社團沒有幹部時，管理部可以替報名的人取消
+const clubEvents = ref([])
+async function loadClubEvents(id) {
+  const { data } = await supabase.from('club_events').select('id, title, starts_at, location')
+    .eq('club_id', id).eq('status', 'scheduled').gt('starts_at', new Date().toISOString()).order('starts_at')
+  clubEvents.value = data ?? []
+}
 function openClub(c) {
   managing.value = c
   renameTo.value = c.name
   mergeInto.value = ''
+  clubEvents.value = []
+  cancelEv.value = null
+  loadClubEvents(c.id)
+}
+const cancelEv = ref(null) // 正在填取消原因的活動
+const cancelWhy = ref('')
+function startCancel(e) {
+  cancelEv.value = e
+  cancelWhy.value = ''
+}
+async function cancelEvent() {
+  const { error } = await supabase.rpc('club_cancel_event', { p_event: cancelEv.value.id, p_reason: cancelWhy.value.trim() })
+  if (error) return toast(errorText(error))
+  toast('活動已取消')
+  cancelEv.value = null
+  await loadClubEvents(managing.value.id)
 }
 async function call(fn, args, done) {
   const { error } = await supabase.rpc(fn, args)
@@ -127,7 +150,12 @@ async function call(fn, args, done) {
   managing.value = managing.value && clubs.value.find((c) => c.id === managing.value.id)
   return true
 }
-const removeOfficer = (c, o) => call('club_remove_member', { p_club: c.id, p_user: o.user_id }, '已移除')
+function removeOfficer(c, o) {
+  // 移除最後一位幹部後，只剩社團管理部能取消這個社團的活動
+  if (c.officers.length === 1 && clubEvents.value.length &&
+      !confirm(t('{name}是這個社團最後一位幹部，社團還有 {n} 場活動沒開始。移除後只有社團管理部能取消這些活動，確定移除？', { name: o.full_name, n: clubEvents.value.length }))) return
+  return call('club_remove_member', { p_club: c.id, p_user: o.user_id }, '已移除')
+}
 const toggleActive = (c) => call('club_set_active', { p_club: c.id, p_active: !c.active }, c.active ? '已停用，社團和活動不再公開' : '已開通')
 const rename = (c) => call('club_rename', { p_club: c.id, p_name: renameTo.value }, '已改名')
 async function merge(c) {
@@ -311,6 +339,21 @@ async function removeStaff(s) {
           <p v-if="!managing.officers.length" class="muted small">{{ t('沒有幹部') }}</p>
         </div>
         <p class="muted tiny">{{ t('移除後對方不能再替這個社團發活動，過去發的活動保留。網站不會通知對方。') }}</p>
+      </div>
+      <div class="vstack" style="gap:8px">
+        <span class="field-t" style="margin:0">{{ t('還沒開始的活動') }}</span>
+        <div class="list">
+          <div v-for="e in clubEvents" :key="e.id" class="row">
+            <span><b>{{ e.title }}</b><br /><span class="muted tiny">{{ dayText(e.starts_at) }} {{ hm(e.starts_at) }} · {{ e.location }}</span></span>
+            <button v-if="cancelEv?.id !== e.id" class="btn plain small" type="button" @click="startCancel(e)">{{ t('取消活動') }}</button>
+          </div>
+          <p v-if="!clubEvents.length" class="muted small">{{ t('沒有') }}</p>
+        </div>
+        <form v-if="cancelEv" class="select-row" @submit.prevent="cancelEvent">
+          <input v-model="cancelWhy" type="text" maxlength="200" :placeholder="t('取消「{title}」的原因，報名的人會看到', { title: cancelEv.title })" />
+          <button class="btn small" type="submit" :disabled="cancelWhy.trim().length < 2">{{ t('確定取消') }}</button>
+        </form>
+        <p class="muted tiny">{{ t('平常由社團幹部自己取消。社團沒有幹部、活動又辦不成時，管理部可以在這裡取消，報名的人會在活動頁看到原因。') }}</p>
       </div>
       <label class="field"><span>{{ t('社團名稱') }}</span>
         <span class="select-row"><input v-model="renameTo" type="text" maxlength="40" /><button class="btn plain small" type="button" :disabled="!renameTo.trim() || renameTo.trim() === managing.name" @click="rename(managing)">{{ t('改名') }}</button></span>

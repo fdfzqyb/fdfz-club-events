@@ -71,7 +71,7 @@ async function logout() {
                   <span class="status" :class="STATUS[a.status][1]">{{ t(STATUS[a.status][0]) }}</span>
                 </span>
               </div>
-              <p v-if="a.status === 'rejected'" class="small" style="background:var(--cream);border-radius:10px;padding:8px 12px">
+              <p v-if="a.status === 'rejected'" class="small" style="background:var(--cream);border-radius:calc(10px*var(--sq));corner-shape:squircle;padding:8px 12px">
                 {{ t('退回理由：{r}', { r: a.reject_reason }) }}<template v-if="a.reviewer_name"> —— {{ t('社團管理部 {name}', { name: a.reviewer_name }) }}</template>
               </p>
             </div>
